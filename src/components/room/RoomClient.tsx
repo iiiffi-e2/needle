@@ -62,6 +62,8 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
   const [energy, setEnergy] = useState(initialData.energy);
   const [bursts, setBursts] = useState<ReactionBurst[]>([]);
   const [toast, setToast] = useState<string | null>(null);
+  const [isMuted, setIsMuted] = useState(false);
+  const [playerDuration, setPlayerDuration] = useState<number | null>(null);
   const [sideTab, setSideTab] = useState<TabId>("chat");
   const [deckLoading, setDeckLoading] = useState(false);
 
@@ -226,6 +228,17 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
 
   const track = playback?.track as Track | null;
   const dj = playback?.dj as User | null;
+
+  useEffect(() => {
+    setPlayerDuration(null);
+  }, [track?.id]);
+
+  const effectiveDuration =
+    playerDuration ?? track?.duration_seconds ?? 0;
+
+  const handleDurationReady = useCallback((seconds: number) => {
+    setPlayerDuration(seconds);
+  }, []);
   const currentUserId = initialData.currentUserId;
   const djUserIds = useMemo(
     () => new Set(djSlots.map((s) => s.user_id)),
@@ -284,6 +297,9 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
               votes={votes}
               myVote={myVote}
               userSaved={userSaved}
+              durationSeconds={effectiveDuration}
+              isMuted={isMuted}
+              onToggleMute={() => setIsMuted((m) => !m)}
               onVote={handleVote}
               onSave={handleSave}
             />
@@ -331,9 +347,11 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
         <YouTubePlayer
           videoId={track.provider_id}
           startedAt={playback.started_at}
-          durationSeconds={track.duration_seconds}
+          durationSeconds={effectiveDuration || track.duration_seconds}
           isPaused={playback.is_paused}
+          muted={isMuted}
           onEnded={handleTrackEnded}
+          onDurationReady={handleDurationReady}
         />
       )}
     </div>

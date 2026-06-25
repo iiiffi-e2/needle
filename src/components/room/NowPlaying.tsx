@@ -116,6 +116,7 @@ export function NowPlaying({
           startedAt={playback.started_at}
           durationSeconds={track.duration_seconds}
           isPaused={playback.is_paused}
+          muted={false}
           onEnded={onTrackEnded}
         />
       ) : (

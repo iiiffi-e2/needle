@@ -12,6 +12,9 @@ interface NowPlayingPanelProps {
   votes: { awesome: number; lame: number };
   myVote: "awesome" | "lame" | null;
   userSaved: boolean;
+  durationSeconds: number;
+  isMuted: boolean;
+  onToggleMute: () => void;
   onVote: (dir: "awesome" | "lame") => void;
   onSave: () => void;
 }
@@ -23,27 +26,49 @@ export function NowPlayingPanel({
   votes,
   myVote,
   userSaved,
+  durationSeconds,
+  isMuted,
+  onToggleMute,
   onVote,
   onSave,
 }: NowPlayingPanelProps) {
   const [elapsed, setElapsed] = useState(0);
   const [loading, setLoading] = useState<string | null>(null);
 
-  const duration = track?.duration_seconds || 0;
+  const duration = durationSeconds;
 
   useEffect(() => {
-    if (!playback?.started_at || !duration) return;
-    const tick = () => {
-      const sec =
-        (Date.now() - new Date(playback.started_at!).getTime()) / 1000;
-      setElapsed(Math.min(duration, Math.max(0, sec)));
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [playback?.started_at, duration]);
+    if (!playback?.started_at) {
+      setElapsed(0);
+      return;
+    }
 
-  const progress = duration ? (elapsed / duration) * 100 : 0;
+    const startedAt = playback.started_at;
+    const pausedAt = playback.paused_at;
+    const isPaused = playback.is_paused;
+
+    const tick = () => {
+      const startedMs = new Date(startedAt).getTime();
+      const endMs =
+        isPaused && pausedAt
+          ? new Date(pausedAt).getTime()
+          : Date.now();
+      setElapsed(Math.max(0, (endMs - startedMs) / 1000));
+    };
+
+    tick();
+    const id = setInterval(tick, 250);
+    return () => clearInterval(id);
+  }, [
+    playback?.started_at,
+    playback?.paused_at,
+    playback?.is_paused,
+    track?.id,
+  ]);
+
+  const progress = duration
+    ? (Math.min(elapsed, duration) / duration) * 100
+    : 0;
   const upActive = myVote === "awesome";
   const downActive = myVote === "lame";
 
@@ -170,8 +195,23 @@ export function NowPlayingPanel({
           </div>
 
           <div className="flex items-center gap-2 mt-3">
+            <button
+              type="button"
+              onClick={onToggleMute}
+              title={isMuted ? "Unmute" : "Mute"}
+              aria-label={isMuted ? "Unmute" : "Mute"}
+              aria-pressed={isMuted}
+              className={cn(
+                "w-[30px] h-[30px] shrink-0 cursor-pointer rounded-[8px] text-sm flex items-center justify-center",
+                isMuted
+                  ? "bg-[color-mix(in_srgb,#ff9d3c_25%,transparent)] border border-[var(--ndl-glow)] text-[var(--ndl-glow)]"
+                  : "bg-[#ffffff10] border border-[var(--ndl-line)] text-[var(--ndl-sub)] hover:text-[var(--ndl-txt)]"
+              )}
+            >
+              {isMuted ? "🔇" : "🔊"}
+            </button>
             <span
-              className="text-[10px] tabular-nums"
+              className="text-[10px] tabular-nums w-[34px] shrink-0"
               style={{ color: "var(--ndl-sub)" }}
             >
               {formatDuration(Math.floor(elapsed))}
@@ -184,15 +224,15 @@ export function NowPlayingPanel({
                   background:
                     "linear-gradient(90deg, var(--ndl-glow), var(--ndl-glow2))",
                   boxShadow: "0 0 10px var(--ndl-glow)",
-                  transition: "width 0.9s linear",
+                  transition: "width 250ms linear",
                 }}
               />
             </div>
             <span
-              className="text-[10px] tabular-nums"
+              className="text-[10px] tabular-nums w-[34px] shrink-0 text-right"
               style={{ color: "var(--ndl-sub)" }}
             >
-              {formatDuration(duration)}
+              {formatDuration(Math.floor(duration))}
             </span>
           </div>
 

@@ -7,7 +7,9 @@ interface YouTubePlayerProps {
   startedAt: string | null;
   durationSeconds: number | null;
   isPaused: boolean;
+  muted: boolean;
   onEnded: () => void;
+  onDurationReady?: (seconds: number) => void;
 }
 
 declare global {
@@ -34,6 +36,8 @@ interface YTPlayer {
   seekTo: (seconds: number, allowSeekAhead: boolean) => void;
   playVideo: () => void;
   pauseVideo: () => void;
+  mute: () => void;
+  unMute: () => void;
   destroy: () => void;
   getCurrentTime: () => number;
   getDuration: () => number;
@@ -63,18 +67,32 @@ function loadYouTubeAPI(): Promise<void> {
   });
 }
 
+function reportDuration(
+  player: YTPlayer,
+  onDurationReady?: (seconds: number) => void
+) {
+  const duration = player.getDuration();
+  if (duration > 0 && onDurationReady) {
+    onDurationReady(Math.floor(duration));
+  }
+}
+
 /** Hidden audio-only YouTube player — controls playback without showing video. */
 export function YouTubePlayer({
   videoId,
   startedAt,
   durationSeconds,
   isPaused,
+  muted,
   onEnded,
+  onDurationReady,
 }: YouTubePlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YTPlayer | null>(null);
   const onEndedRef = useRef(onEnded);
+  const onDurationReadyRef = useRef(onDurationReady);
   onEndedRef.current = onEnded;
+  onDurationReadyRef.current = onDurationReady;
 
   const initPlayer = useCallback(async () => {
     if (!containerRef.current || !videoId) return;
@@ -104,18 +122,26 @@ export function YouTubePlayer({
               event.target.seekTo(elapsed, true);
             }
           }
+          if (muted) {
+            event.target.mute();
+          } else {
+            event.target.unMute();
+          }
           if (!isPaused) {
             event.target.playVideo();
           }
+          reportDuration(event.target, onDurationReadyRef.current ?? undefined);
         },
         onStateChange: (event) => {
           if (event.data === window.YT.PlayerState.ENDED) {
             onEndedRef.current();
+            return;
           }
+          reportDuration(event.target, onDurationReadyRef.current ?? undefined);
         },
       },
     });
-  }, [videoId, startedAt, isPaused]);
+  }, [videoId, startedAt, isPaused, muted]);
 
   useEffect(() => {
     initPlayer();
@@ -133,6 +159,15 @@ export function YouTubePlayer({
       playerRef.current.playVideo();
     }
   }, [isPaused]);
+
+  useEffect(() => {
+    if (!playerRef.current) return;
+    if (muted) {
+      playerRef.current.mute();
+    } else {
+      playerRef.current.unMute();
+    }
+  }, [muted]);
 
   useEffect(() => {
     if (!startedAt || !durationSeconds) return;

@@ -127,6 +127,7 @@ function DeckSlot({
 
 export interface VenueCanvasProps {
   currentDj: User | null;
+  isDjSleeping?: boolean;
   sideDjs: [DjSlot | null, DjSlot | null];
   members: RoomMember[];
   djUserIds: Set<string>;
@@ -141,6 +142,7 @@ export interface VenueCanvasProps {
 
 export function VenueCanvas({
   currentDj,
+  isDjSleeping = false,
   sideDjs,
   members,
   djUserIds,
@@ -408,11 +410,32 @@ export function VenueCanvas({
         {currentDj ? (
           <>
             <div
-              style={{
-                animation: `ndl-wobble ${djWobble} ease-in-out infinite`,
-              }}
+              className="relative"
+              style={
+                isDjSleeping
+                  ? undefined
+                  : { animation: `ndl-wobble ${djWobble} ease-in-out infinite` }
+              }
             >
-              <VinylBlob variant="dj" size={66} dance showRing />
+              {isDjSleeping && (
+                <span
+                  className="absolute left-1/2 -translate-x-1/2 pointer-events-none font-extrabold tracking-widest select-none"
+                  style={{
+                    top: -22,
+                    fontSize: 14,
+                    color: "var(--sub)",
+                    animation: "ndl-sleep 2.4s ease-in-out infinite",
+                  }}
+                >
+                  zzzzz
+                </span>
+              )}
+              <VinylBlob
+                variant="dj"
+                size={66}
+                dance={!isDjSleeping}
+                showRing
+              />
             </div>
             <div className="mt-2 text-center pointer-events-auto">
               <div
@@ -425,12 +448,16 @@ export function VenueCanvas({
                 className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full font-extrabold tracking-[0.08em]"
                 style={{
                   fontSize: 9.5,
-                  color: "#1a0d06",
-                  background: "linear-gradient(120deg, var(--glow), var(--accent))",
-                  boxShadow: "0 0 16px rgba(255, 157, 60, 0.6)",
+                  color: isDjSleeping ? "var(--sub)" : "#1a0d06",
+                  background: isDjSleeping
+                    ? "rgba(255,255,255,0.08)"
+                    : "linear-gradient(120deg, var(--glow), var(--accent))",
+                  boxShadow: isDjSleeping
+                    ? "none"
+                    : "0 0 16px rgba(255, 157, 60, 0.6)",
                 }}
               >
-                ON DECK
+                {isDjSleeping ? "RESTING" : "ON DECK"}
               </div>
             </div>
           </>

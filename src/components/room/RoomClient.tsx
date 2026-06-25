@@ -259,9 +259,13 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
     return [others[0] || null, others[1] || null];
   }, [djSlots, currentDjId]);
 
+  const isDjSleeping = !!dj && !track;
+
   const marquee = track
     ? `NOW SPINNING · ${track.title}${track.artist ? ` — ${track.artist}` : ""} · played by ${dj?.display_name || "DJ"} · `
-    : `${room.name} · The booth is open · Drop a track to get moving · `;
+    : isDjSleeping
+      ? `${dj?.display_name || "DJ"} is resting — drop a track to wake the booth · `
+      : `${room.name} · The booth is open · Drop a track to get moving · `;
 
   return (
     <div className="needle-room">
@@ -277,6 +281,7 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
           <div className="needle-venue-scene">
             <VenueCanvas
               currentDj={dj}
+              isDjSleeping={isDjSleeping}
               sideDjs={sideDjs}
               members={members}
               djUserIds={djUserIds}

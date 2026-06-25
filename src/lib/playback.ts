@@ -68,12 +68,14 @@ export async function advancePlayback(
   }
 
   const currentDjId = playback?.current_dj_user_id;
+  const stayOnCurrentDj =
+    options.stayOnCurrentDj ?? djSlots.length <= 1;
   let startIndex = 0;
 
   if (currentDjId) {
     const currentIndex = djSlots.findIndex((s) => s.user_id === currentDjId);
     if (currentIndex >= 0) {
-      if (options.stayOnCurrentDj) {
+      if (stayOnCurrentDj) {
         startIndex = currentIndex;
       } else {
         startIndex = (currentIndex + 1) % djSlots.length;
@@ -161,7 +163,7 @@ export async function advancePlayback(
 
       played = true;
       break;
-    } else {
+    } else if (slots.length > 1) {
       await supabase
         .from("dj_slots")
         .update({ missed_turns: (slot.missed_turns || 0) + 1 })
@@ -182,11 +184,16 @@ export async function advancePlayback(
   }
 
   if (!played) {
+    const sleepingDjId =
+      currentDjId && slots.some((s) => s.user_id === currentDjId)
+        ? currentDjId
+        : slots[startIndex]?.user_id ?? slots[0]?.user_id ?? null;
+
     await supabase.from("room_playback").upsert({
       room_id: roomId,
       current_track_id: null,
       current_queue_item_id: null,
-      current_dj_user_id: null,
+      current_dj_user_id: sleepingDjId,
       started_at: null,
       is_paused: false,
       updated_at: new Date().toISOString(),

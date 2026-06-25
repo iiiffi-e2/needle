@@ -90,6 +90,24 @@ export async function POST(
 
     await bumpRoomEnergy(admin, room.id, ENERGY_BUMP.joinDeck);
 
+    const { data: playback } = await admin
+      .from("room_playback")
+      .select("current_dj_user_id")
+      .eq("room_id", room.id)
+      .maybeSingle();
+
+    if (!playback?.current_dj_user_id) {
+      await admin.from("room_playback").upsert({
+        room_id: room.id,
+        current_dj_user_id: user.id,
+        current_track_id: null,
+        current_queue_item_id: null,
+        started_at: null,
+        is_paused: false,
+        updated_at: new Date().toISOString(),
+      });
+    }
+
     return NextResponse.json({ slot, waitlisted: false });
   }
 
@@ -150,6 +168,14 @@ export async function DELETE(
     return NextResponse.json({ error: "Room not found" }, { status: 404 });
   }
 
+  const { data: playback } = await admin
+    .from("room_playback")
+    .select("current_dj_user_id")
+    .eq("room_id", room.id)
+    .maybeSingle();
+
+  const wasCurrentDj = playback?.current_dj_user_id === user.id;
+
   await admin
     .from("dj_slots")
     .delete()
@@ -180,6 +206,11 @@ export async function DELETE(
     room.id,
     `${profile?.display_name || "Someone"} left the booth.`
   );
+
+  if (wasCurrentDj) {
+    const { advancePlayback } = await import("@/lib/playback");
+    await advancePlayback(admin, room.id, "ended");
+  }
 
   return NextResponse.json({ left: true });
 }

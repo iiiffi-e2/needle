@@ -45,11 +45,6 @@ export async function POST(
     );
   }
 
-  const { count: djCount } = await admin
-    .from("dj_slots")
-    .select("*", { count: "exact", head: true })
-    .eq("room_id", room.id);
-
   const { data: profile } = await admin
     .from("users")
     .select("display_name")
@@ -62,9 +57,7 @@ export async function POST(
     `⏭️ ${profile?.display_name || "The DJ"} skipped their track.`
   );
 
-  const result = await advancePlayback(admin, room.id, "skipped", {
-    stayOnCurrentDj: (djCount || 0) <= 1,
-  });
+  const result = await advancePlayback(admin, room.id, "skipped");
 
   return NextResponse.json(result);
 }

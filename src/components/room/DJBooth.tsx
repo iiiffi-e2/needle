@@ -9,12 +9,14 @@ interface DJSlotProps {
   slot: DjSlot | null;
   isCurrentTurn: boolean;
   isCurrentUser: boolean;
+  isSleeping?: boolean;
 }
 
 export function DJSlotComponent({
   slot,
   isCurrentTurn,
   isCurrentUser,
+  isSleeping = false,
 }: Omit<DJSlotProps, "position">) {
   if (!slot?.user) {
     return (
@@ -50,7 +52,9 @@ export function DJSlotComponent({
         {slot.user.display_name}
       </p>
       {isCurrentTurn && (
-        <span className="text-xs text-accent mt-1 font-medium">On deck</span>
+        <span className="text-xs text-accent mt-1 font-medium">
+          {isSleeping ? "zzzzz" : "On deck"}
+        </span>
       )}
     </div>
   );

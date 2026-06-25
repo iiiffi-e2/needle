@@ -534,7 +534,7 @@ export function VenueCanvas({
       {/* Right deck */}
       <div
         className="absolute z-[11]"
-        style={{ top: "27.4%", left: "58.3%", transform: "translateX(-50%)" }}
+        style={{ top: "27.4%", left: "68.1%", transform: "translateX(-50%)" }}
       >
         <DeckSlot
           side="right"

@@ -4,11 +4,12 @@ import { useEffect, useRef, useCallback } from "react";
 
 interface YouTubePlayerProps {
   videoId: string;
+  sessionId: string;
   startedAt: string | null;
   durationSeconds: number | null;
   isPaused: boolean;
   muted: boolean;
-  onEnded: () => void;
+  onEnded: (sessionId: string) => void;
   onDurationReady?: (seconds: number) => void;
 }
 
@@ -26,7 +27,7 @@ declare global {
           };
         }
       ) => YTPlayer;
-      PlayerState: { ENDED: number; PLAYING: number; PAUSED: number };
+      PlayerState: { ENDED: number; PLAYING: number; PAUSED: number; BUFFERING: number };
     };
     onYouTubeIframeAPIReady: () => void;
   }
@@ -41,6 +42,9 @@ interface YTPlayer {
   destroy: () => void;
   getCurrentTime: () => number;
   getDuration: () => number;
+  loadVideoById: (
+    videoIdOrOptions: string | { videoId: string; startSeconds?: number }
+  ) => void;
 }
 
 let apiLoaded = false;
@@ -77,9 +81,15 @@ function reportDuration(
   }
 }
 
+function elapsedSeconds(startedAt: string | null): number {
+  if (!startedAt) return 0;
+  return Math.max(0, (Date.now() - new Date(startedAt).getTime()) / 1000);
+}
+
 /** Hidden audio-only YouTube player — controls playback without showing video. */
 export function YouTubePlayer({
   videoId,
+  sessionId,
   startedAt,
   durationSeconds,
   isPaused,
@@ -89,103 +99,159 @@ export function YouTubePlayer({
 }: YouTubePlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YTPlayer | null>(null);
+  const loadedVideoIdRef = useRef<string | null>(null);
+  const activeSessionIdRef = useRef(sessionId);
+  const readyRef = useRef(false);
+  const switchingRef = useRef(false);
   const onEndedRef = useRef(onEnded);
   const onDurationReadyRef = useRef(onDurationReady);
+  const isPausedRef = useRef(isPaused);
+  const mutedRef = useRef(muted);
   onEndedRef.current = onEnded;
   onDurationReadyRef.current = onDurationReady;
+  isPausedRef.current = isPaused;
+  mutedRef.current = muted;
+  activeSessionIdRef.current = sessionId;
 
-  const initPlayer = useCallback(async () => {
-    if (!containerRef.current || !videoId) return;
-
-    await loadYouTubeAPI();
-
-    if (playerRef.current) {
-      playerRef.current.destroy();
-      playerRef.current = null;
+  const applyPlaybackState = useCallback((player: YTPlayer) => {
+    if (mutedRef.current) {
+      player.mute();
+    } else {
+      player.unMute();
     }
+    if (isPausedRef.current) {
+      player.pauseVideo();
+    } else {
+      player.playVideo();
+    }
+  }, []);
 
-    playerRef.current = new window.YT.Player(containerRef.current, {
-      videoId,
-      playerVars: {
-        autoplay: 1,
-        controls: 0,
-        modestbranding: 1,
-        rel: 0,
-        fs: 0,
-      },
-      events: {
-        onReady: (event) => {
-          if (startedAt) {
-            const elapsed =
-              (Date.now() - new Date(startedAt).getTime()) / 1000;
-            if (elapsed > 0) {
-              event.target.seekTo(elapsed, true);
-            }
-          }
-          if (muted) {
-            event.target.mute();
-          } else {
-            event.target.unMute();
-          }
-          if (!isPaused) {
-            event.target.playVideo();
-          }
-          reportDuration(event.target, onDurationReadyRef.current ?? undefined);
-        },
-        onStateChange: (event) => {
-          if (event.data === window.YT.PlayerState.ENDED) {
-            onEndedRef.current();
-            return;
-          }
-          reportDuration(event.target, onDurationReadyRef.current ?? undefined);
-        },
-      },
-    });
-  }, [videoId, startedAt, isPaused, muted]);
+  const notifyEnded = useCallback((endedSessionId: string) => {
+    onEndedRef.current(endedSessionId);
+  }, []);
 
   useEffect(() => {
-    initPlayer();
+    if (!containerRef.current || !videoId) return;
+
+    let cancelled = false;
+    const initialSessionId = sessionId;
+
+    (async () => {
+      await loadYouTubeAPI();
+      if (cancelled || !containerRef.current) return;
+
+      const startSeconds = elapsedSeconds(startedAt);
+
+      playerRef.current = new window.YT.Player(containerRef.current, {
+        videoId,
+        playerVars: {
+          autoplay: 1,
+          controls: 0,
+          modestbranding: 1,
+          rel: 0,
+          fs: 0,
+        },
+        events: {
+          onReady: (event) => {
+            readyRef.current = true;
+            loadedVideoIdRef.current = videoId;
+            activeSessionIdRef.current = initialSessionId;
+            if (startSeconds > 0) {
+              event.target.seekTo(startSeconds, true);
+            }
+            applyPlaybackState(event.target);
+            reportDuration(
+              event.target,
+              onDurationReadyRef.current ?? undefined
+            );
+          },
+          onStateChange: (event) => {
+            const { ENDED, PLAYING, BUFFERING } = window.YT.PlayerState;
+            if (
+              event.data === PLAYING ||
+              event.data === BUFFERING
+            ) {
+              switchingRef.current = false;
+              applyPlaybackState(event.target);
+            }
+            if (event.data === ENDED && !switchingRef.current) {
+              notifyEnded(activeSessionIdRef.current);
+              return;
+            }
+            reportDuration(
+              event.target,
+              onDurationReadyRef.current ?? undefined
+            );
+          },
+        },
+      });
+    })();
+
     return () => {
+      cancelled = true;
+      switchingRef.current = true;
+      readyRef.current = false;
+      loadedVideoIdRef.current = null;
       playerRef.current?.destroy();
       playerRef.current = null;
     };
-  }, [initPlayer]);
+    // Player is created once per mount; track changes use loadVideoById below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
-    if (!playerRef.current) return;
-    if (isPaused) {
-      playerRef.current.pauseVideo();
-    } else {
-      playerRef.current.playVideo();
+    const player = playerRef.current;
+    if (!player || !readyRef.current || !videoId) return;
+
+    if (loadedVideoIdRef.current === videoId) {
+      activeSessionIdRef.current = sessionId;
+      const startSeconds = elapsedSeconds(startedAt);
+      if (startSeconds > 0) {
+        const drift = Math.abs(player.getCurrentTime() - startSeconds);
+        if (drift > 3) {
+          player.seekTo(startSeconds, true);
+        }
+      }
+      applyPlaybackState(player);
+      return;
     }
-  }, [isPaused]);
 
-  useEffect(() => {
-    if (!playerRef.current) return;
-    if (muted) {
-      playerRef.current.mute();
+    switchingRef.current = true;
+    loadedVideoIdRef.current = videoId;
+    activeSessionIdRef.current = sessionId;
+    const startSeconds = elapsedSeconds(startedAt);
+    if (startSeconds > 0) {
+      player.loadVideoById({ videoId, startSeconds });
     } else {
-      playerRef.current.unMute();
+      player.loadVideoById(videoId);
     }
-  }, [muted]);
+  }, [videoId, sessionId, startedAt, applyPlaybackState]);
 
   useEffect(() => {
-    if (!startedAt || !durationSeconds) return;
+    if (!playerRef.current || !readyRef.current) return;
+    applyPlaybackState(playerRef.current);
+  }, [isPaused, muted, applyPlaybackState]);
 
-    const elapsed = (Date.now() - new Date(startedAt).getTime()) / 1000;
+  useEffect(() => {
+    if (!startedAt || !durationSeconds || !sessionId) return;
+
+    const endedSessionId = sessionId;
+    const elapsed = elapsedSeconds(startedAt);
     const remaining = (durationSeconds - elapsed) * 1000;
 
     if (remaining <= 0) {
-      onEndedRef.current();
+      if (elapsed >= 3) {
+        notifyEnded(endedSessionId);
+      }
       return;
     }
 
     const timer = setTimeout(() => {
-      onEndedRef.current();
+      notifyEnded(endedSessionId);
     }, remaining + 2000);
 
     return () => clearTimeout(timer);
-  }, [startedAt, durationSeconds, videoId]);
+  }, [startedAt, durationSeconds, videoId, sessionId, notifyEnded]);
 
   return (
     <div

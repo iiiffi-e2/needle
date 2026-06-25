@@ -5,13 +5,11 @@ import { useState } from "react";
 interface TrackSubmitFormProps {
   roomSlug: string;
   isDj: boolean;
-  hasQueuedTrack: boolean;
 }
 
 export function TrackSubmitForm({
   roomSlug,
   isDj,
-  hasQueuedTrack,
 }: TrackSubmitFormProps) {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
@@ -19,14 +17,6 @@ export function TrackSubmitForm({
   const [success, setSuccess] = useState(false);
 
   if (!isDj) return null;
-
-  if (hasQueuedTrack) {
-    return (
-      <div className="glass-card rounded-2xl p-4 text-center">
-        <p className="text-sm text-success">✓ Your track is queued</p>
-      </div>
-    );
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

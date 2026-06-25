@@ -16,7 +16,7 @@ interface NowPlayingProps {
   userSaved: boolean;
   roomSlug: string;
   canSkip: boolean;
-  onTrackEnded: () => void;
+  onTrackEnded: (queueItemId: string) => void;
   onSkip: () => void;
 }
 
@@ -110,9 +110,10 @@ export function NowPlaying({
         )}
       </div>
 
-      {track.provider === "youtube" && track.provider_id ? (
+      {track.provider === "youtube" && track.provider_id && playback.current_queue_item_id ? (
         <YouTubePlayer
           videoId={track.provider_id}
+          sessionId={playback.current_queue_item_id}
           startedAt={playback.started_at}
           durationSeconds={track.duration_seconds}
           isPaused={playback.is_paused}

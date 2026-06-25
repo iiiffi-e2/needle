@@ -72,6 +72,8 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
   const [playerDuration, setPlayerDuration] = useState<number | null>(null);
   const [sideTab, setSideTab] = useState<TabId>("chat");
   const [deckLoading, setDeckLoading] = useState(false);
+  const advancingQueueItemRef = useRef<string | null>(null);
+  const advancedQueueItemsRef = useRef(new Set<string>());
 
   const refresh = useCallback(async () => {
     const res = await fetch(`/api/rooms/${room.slug}`);
@@ -197,14 +199,34 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
 
   const currentUserId = initialData.currentUserId;
 
-  const handleTrackEnded = useCallback(async () => {
-    await fetch(`/api/rooms/${room.slug}/advance`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reason: "ended" }),
-    });
-    await refresh();
-  }, [room.slug, refresh]);
+  const handleTrackEnded = useCallback(
+    async (finishedQueueItemId: string) => {
+      if (!finishedQueueItemId) return;
+      if (advancedQueueItemsRef.current.has(finishedQueueItemId)) return;
+      if (advancingQueueItemRef.current === finishedQueueItemId) return;
+      advancingQueueItemRef.current = finishedQueueItemId;
+
+      try {
+        const res = await fetch(`/api/rooms/${room.slug}/advance`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            reason: "ended",
+            queueItemId: finishedQueueItemId,
+          }),
+        });
+        if (res.ok) {
+          advancedQueueItemsRef.current.add(finishedQueueItemId);
+        }
+        await refresh();
+      } finally {
+        if (advancingQueueItemRef.current === finishedQueueItemId) {
+          advancingQueueItemRef.current = null;
+        }
+      }
+    },
+    [room.slug, refresh]
+  );
 
   const handleVote = useCallback(
     async (voteType: "awesome" | "lame") => {
@@ -301,9 +323,6 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
   );
   const isUserDj = djSlots.some((s) => s.user_id === currentUserId);
   const isUserWaitlisted = waitlist.some((w) => w.user_id === currentUserId);
-  const hasQueuedTrack = queueItems.some(
-    (q) => q.dj_user_id === currentUserId
-  );
   const currentUser = members.find((m) => m.user_id === currentUserId)?.user;
 
   const currentDjId = playback?.current_dj_user_id || null;
@@ -368,7 +387,6 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
           <DropTrackBar
             roomSlug={room.slug}
             isDj={isUserDj}
-            hasQueuedTrack={hasQueuedTrack}
             onOpenCrate={() => setSideTab("queue")}
             onToast={showToast}
           />
@@ -384,6 +402,7 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
           roomSlug={room.slug}
           initialMessages={initialData.messages}
           currentUserId={currentUserId}
+          currentDjUserId={currentDjId}
           activeTab={sideTab}
           onTabChange={setSideTab}
         />
@@ -404,9 +423,10 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
         </div>
       )}
 
-      {track?.provider === "youtube" && track.provider_id && playback && (
+      {track?.provider === "youtube" && track.provider_id && playback?.current_queue_item_id && (
         <YouTubePlayer
           videoId={track.provider_id}
+          sessionId={playback.current_queue_item_id}
           startedAt={playback.started_at}
           durationSeconds={effectiveDuration || track.duration_seconds}
           isPaused={playback.is_paused}

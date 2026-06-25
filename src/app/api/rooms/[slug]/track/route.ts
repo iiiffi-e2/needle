@@ -54,21 +54,6 @@ export async function POST(
     );
   }
 
-  const { data: existingQueue } = await admin
-    .from("queue_items")
-    .select("id")
-    .eq("room_id", room.id)
-    .eq("dj_user_id", user.id)
-    .eq("status", "queued")
-    .maybeSingle();
-
-  if (existingQueue) {
-    return NextResponse.json(
-      { error: "You already have a track queued" },
-      { status: 400 }
-    );
-  }
-
   const metadata = await fetchYouTubeMetadata(videoId);
 
   const { data: track, error: trackError } = await admin

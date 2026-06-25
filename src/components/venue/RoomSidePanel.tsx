@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { ChatMessage, QueueItem, Room, RoomMember, User } from "@/lib/types";
 import { resolveUserColor } from "@/lib/design-tokens";
+import { getQueuePlaybackOrder } from "@/lib/queue-order";
 import { formatDuration, timeAgo } from "@/lib/utils";
 import { SystemMessage } from "@/components/shared/SystemMessage";
 import { NeedlebotMessage } from "@/components/shared/NeedlebotMessage";
@@ -19,6 +20,7 @@ interface RoomSidePanelProps {
   roomSlug: string;
   initialMessages: ChatMessage[];
   currentUserId: string | null;
+  currentDjUserId: string | null;
   activeTab: TabId;
   onTabChange: (tab: TabId) => void;
 }
@@ -33,6 +35,7 @@ export function RoomSidePanel({
   roomSlug,
   initialMessages,
   currentUserId,
+  currentDjUserId,
   activeTab,
   onTabChange,
 }: RoomSidePanelProps) {
@@ -90,6 +93,12 @@ export function RoomSidePanel({
   };
 
   const floorMembers = members.filter((m) => !djUserIds.has(m.user_id));
+
+  const orderedQueue = getQueuePlaybackOrder(
+    queueItems,
+    djSlots,
+    currentDjUserId
+  );
 
   return (
     <aside className="needle-sidebar min-h-[280px] lg:min-h-0">
@@ -216,12 +225,12 @@ export function RoomSidePanel({
           <div className="text-[11px] text-muted tracking-wide">
             UP NEXT ON THE DECKS
           </div>
-          {queueItems.length === 0 ? (
+          {orderedQueue.length === 0 ? (
             <p className="text-sm text-muted italic py-4 text-center">
               Queue is empty — drop a track!
             </p>
           ) : (
-            queueItems.map((q, i) => (
+            orderedQueue.map((q, i) => (
               <div
                 key={q.id}
                 className="flex items-center gap-2.5 p-2 rounded-[11px] bg-[#ffffff08] border border-[var(--ndl-line)]"

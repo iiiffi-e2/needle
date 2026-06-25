@@ -7,7 +7,9 @@ export async function POST(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params;
-  const { reason } = await request.json().catch(() => ({ reason: "ended" }));
+  const body = await request.json().catch(() => ({ reason: "ended" }));
+  const reason = body.reason === "skipped" ? "skipped" : "ended";
+  const queueItemId = body.queueItemId as string | undefined;
 
   const admin = createServiceClient();
   const { data: room } = await admin
@@ -20,11 +22,22 @@ export async function POST(
     return NextResponse.json({ error: "Room not found" }, { status: 404 });
   }
 
-  const result = await advancePlayback(
-    admin,
-    room.id,
-    reason === "skipped" ? "skipped" : "ended"
-  );
+  if (queueItemId) {
+    const { data: playback } = await admin
+      .from("room_playback")
+      .select("current_queue_item_id")
+      .eq("room_id", room.id)
+      .maybeSingle();
+
+    if (playback?.current_queue_item_id !== queueItemId) {
+      return NextResponse.json({
+        advanced: false,
+        reason: "already_advanced",
+      });
+    }
+  }
+
+  const result = await advancePlayback(admin, room.id, reason);
 
   return NextResponse.json(result);
 }

@@ -5,7 +5,6 @@ import { useState } from "react";
 interface DropTrackBarProps {
   roomSlug: string;
   isDj: boolean;
-  hasQueuedTrack: boolean;
   onOpenCrate: () => void;
   onToast: (msg: string) => void;
 }
@@ -13,7 +12,6 @@ interface DropTrackBarProps {
 export function DropTrackBar({
   roomSlug,
   isDj,
-  hasQueuedTrack,
   onOpenCrate,
   onToast,
 }: DropTrackBarProps) {
@@ -30,11 +28,6 @@ export function DropTrackBar({
       onToast("Join a deck to drop tracks");
       return;
     }
-    if (hasQueuedTrack) {
-      onToast("You already have a track queued");
-      return;
-    }
-
     setLoading(true);
     try {
       const res = await fetch(`/api/rooms/${roomSlug}/track`, {
@@ -48,7 +41,7 @@ export function DropTrackBar({
         return;
       }
       setUrl("");
-      onToast("Dropped into the crate");
+      onToast("Added to the queue");
       onOpenCrate();
     } finally {
       setLoading(false);

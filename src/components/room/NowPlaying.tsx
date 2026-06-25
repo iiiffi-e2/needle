@@ -15,7 +15,9 @@ interface NowPlayingProps {
   userVotes: string[];
   userSaved: boolean;
   roomSlug: string;
+  canSkip: boolean;
   onTrackEnded: () => void;
+  onSkip: () => void;
 }
 
 function Equalizer() {
@@ -44,9 +46,12 @@ export function NowPlaying({
   userVotes,
   userSaved,
   roomSlug,
+  canSkip,
   onTrackEnded,
+  onSkip,
 }: NowPlayingProps) {
   const [timeRemaining, setTimeRemaining] = useState<string>("");
+  const [skipping, setSkipping] = useState(false);
 
   useEffect(() => {
     if (!playback?.started_at || !track?.duration_seconds) return;
@@ -62,6 +67,16 @@ export function NowPlaying({
     const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
   }, [playback?.started_at, track?.duration_seconds]);
+
+  const handleSkip = async () => {
+    if (!canSkip || skipping) return;
+    setSkipping(true);
+    try {
+      await onSkip();
+    } finally {
+      setSkipping(false);
+    }
+  };
 
   if (!track || !playback?.current_track_id) {
     return (
@@ -84,6 +99,15 @@ export function NowPlaying({
         <span className="text-xs text-accent font-medium uppercase tracking-wider">
           Now Playing
         </span>
+        {canSkip && (
+          <button
+            onClick={handleSkip}
+            disabled={skipping}
+            className="ml-auto text-xs font-medium px-3 py-1 rounded-full bg-surface-light text-muted hover:text-foreground hover:bg-surface-light/80 transition-colors disabled:opacity-50"
+          >
+            {skipping ? "Skipping…" : "Skip track"}
+          </button>
+        )}
       </div>
 
       {track.provider === "youtube" && track.provider_id ? (

@@ -81,6 +81,11 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
     await refresh();
   }, [room.slug, refresh]);
 
+  const handleSkip = useCallback(async () => {
+    await fetch(`/api/rooms/${room.slug}/skip`, { method: "POST" });
+    await refresh();
+  }, [room.slug, refresh]);
+
   const track = playback?.track as Track | null;
   const dj = playback?.dj as User | null;
   const currentUserId = initialData.currentUserId;
@@ -89,6 +94,7 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
   const hasQueuedTrack = queueItems.some(
     (q) => q.dj_user_id === currentUserId
   );
+  const isCurrentDj = playback?.current_dj_user_id === currentUserId;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -106,7 +112,9 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
               userVotes={userVotes}
               userSaved={userSaved}
               roomSlug={room.slug}
+              canSkip={isCurrentDj && !!track}
               onTrackEnded={handleTrackEnded}
+              onSkip={handleSkip}
             />
 
             <DJBooth

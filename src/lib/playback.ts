@@ -13,10 +13,16 @@ export async function postSystemMessage(
   });
 }
 
+export interface AdvancePlaybackOptions {
+  /** When true, play the current DJ's next queued track instead of rotating. */
+  stayOnCurrentDj?: boolean;
+}
+
 export async function advancePlayback(
   supabase: SupabaseClient,
   roomId: string,
-  reason: "ended" | "skipped" | "no_track" = "ended"
+  reason: "ended" | "skipped" | "no_track" = "ended",
+  options: AdvancePlaybackOptions = {}
 ) {
   const { data: room } = await supabase
     .from("rooms")
@@ -67,21 +73,25 @@ export async function advancePlayback(
   if (currentDjId) {
     const currentIndex = djSlots.findIndex((s) => s.user_id === currentDjId);
     if (currentIndex >= 0) {
-      startIndex = (currentIndex + 1) % djSlots.length;
+      if (options.stayOnCurrentDj) {
+        startIndex = currentIndex;
+      } else {
+        startIndex = (currentIndex + 1) % djSlots.length;
 
-      const currentSlot = djSlots[currentIndex];
-      await supabase
-        .from("dj_slots")
-        .update({ position: djSlots.length })
-        .eq("id", currentSlot.id);
+        const currentSlot = djSlots[currentIndex];
+        await supabase
+          .from("dj_slots")
+          .update({ position: djSlots.length })
+          .eq("id", currentSlot.id);
 
-      for (let i = 0; i < djSlots.length; i++) {
-        if (i !== currentIndex) {
-          const newPos = i < currentIndex ? i : i;
-          await supabase
-            .from("dj_slots")
-            .update({ position: newPos })
-            .eq("id", djSlots[i].id);
+        for (let i = 0; i < djSlots.length; i++) {
+          if (i !== currentIndex) {
+            const newPos = i < currentIndex ? i : i;
+            await supabase
+              .from("dj_slots")
+              .update({ position: newPos })
+              .eq("id", djSlots[i].id);
+          }
         }
       }
     }

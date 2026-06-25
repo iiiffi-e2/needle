@@ -32,6 +32,35 @@ const CrowdMemberBlob = memo(function CrowdMemberBlob({
   );
 });
 
+function HeadReactionGlyphs({
+  reactions,
+  size,
+}: {
+  reactions: CrowdHeadReaction[];
+  size: number;
+}) {
+  return (
+    <>
+      {reactions.map((r) => (
+        <span
+          key={r.id}
+          className="absolute left-1/2 pointer-events-none z-[5] leading-none"
+          style={{
+            top: -Math.round(size * 0.5),
+            transform: `translateX(calc(-50% + ${r.offset}px))`,
+            fontSize: Math.round(size * 0.42),
+            color: r.color,
+            textShadow: `0 0 12px ${r.color}`,
+            animation: `ndl-rise ${(2.4 + r.delay).toFixed(2)}s ease-out forwards ${r.delay.toFixed(2)}s`,
+          }}
+        >
+          {r.glyph}
+        </span>
+      ))}
+    </>
+  );
+}
+
 const RIG_LIGHTS = [
   { x: 12.77, dur: "5s", delay: "0s" },
   { x: 31.91, dur: "6.2s", delay: "0.6s" },
@@ -46,6 +75,7 @@ interface DeckSlotProps {
   side: "left" | "right";
   occupant: DjSlot | null;
   isCurrentUser: boolean;
+  userReactions: CrowdHeadReaction[];
   onJoin: () => void;
   onLeave: () => void;
   loading: boolean;
@@ -56,6 +86,7 @@ function DeckSlot({
   side,
   occupant,
   isCurrentUser,
+  userReactions,
   onJoin,
   onLeave,
   loading,
@@ -67,21 +98,25 @@ function DeckSlot({
   const accentLight = isLeft ? "var(--glow2)" : "var(--neon)";
 
   if (occupant?.user) {
+    const deckBlobSize = 60;
     return (
       <div className="flex flex-col items-center pointer-events-auto">
-        <VinylBlob
-          variant={isCurrentUser ? "you" : "crowd"}
-          color={resolveUserColor(
-            occupant.user_id,
-            occupant.user?.avatar_color
-          )}
-          size={60}
-          dance
-          showRing
-          initials={
-            isCurrentUser ? getInitials(occupant.user.display_name) : undefined
-          }
-        />
+        <div className="relative">
+          <HeadReactionGlyphs reactions={userReactions} size={deckBlobSize} />
+          <VinylBlob
+            variant={isCurrentUser ? "you" : "crowd"}
+            color={resolveUserColor(
+              occupant.user_id,
+              occupant.user?.avatar_color
+            )}
+            size={deckBlobSize}
+            dance
+            showRing
+            initials={
+              isCurrentUser ? getInitials(occupant.user.display_name) : undefined
+            }
+          />
+        </div>
         <div className="mt-2 text-center">
           <div className="font-extrabold text-xs">
             {isCurrentUser ? "you" : occupant.user.display_name}
@@ -381,7 +416,7 @@ export function VenueCanvas({
               width: 48,
               height: 48,
               background:
-                "radial-gradient(circle at 50% 42%, #2a2a33 0 40%, #0c0c10 41% 70%, rgba(255, 157, 60, 0.6) 71%)",
+                "radial-gradient(circle at 50% 50%, #2a2a33 0 40%, #0c0c10 41% 70%, rgba(255, 157, 60, 0.6) 71%)",
               boxShadow:
                 "inset 0 0 12px #000, 0 0 14px rgba(255, 157, 60, 0.35)",
               animation: `ndl-glow ${thumpDur} ease-in-out infinite`,
@@ -422,6 +457,11 @@ export function VenueCanvas({
           side="left"
           occupant={sideDjs[0]}
           isCurrentUser={sideDjs[0]?.user_id === currentUserId}
+          userReactions={
+            sideDjs[0]?.user_id
+              ? reactionsByUser.get(sideDjs[0].user_id) ?? []
+              : []
+          }
           onJoin={onJoinDeck}
           onLeave={onLeaveDeck}
           loading={deckLoading}
@@ -474,6 +514,10 @@ export function VenueCanvas({
                   zzzzz
                 </span>
               )}
+              <HeadReactionGlyphs
+                reactions={reactionsByUser.get(currentDj.id) ?? []}
+                size={66}
+              />
               <VinylBlob
                 variant="dj"
                 color={resolveUserColor(
@@ -540,6 +584,11 @@ export function VenueCanvas({
           side="right"
           occupant={sideDjs[1]}
           isCurrentUser={sideDjs[1]?.user_id === currentUserId}
+          userReactions={
+            sideDjs[1]?.user_id
+              ? reactionsByUser.get(sideDjs[1].user_id) ?? []
+              : []
+          }
           onJoin={onJoinDeck}
           onLeave={onLeaveDeck}
           loading={deckLoading}
@@ -617,10 +666,15 @@ export function VenueCanvas({
         const member = listeners.find((m) => m.user_id === c.userId);
         if (!member) return null;
         const userReactions = reactionsByUser.get(c.userId) ?? [];
+        const displayName =
+          member.user_id === currentUserId
+            ? "you"
+            : member.user?.display_name || "?";
+
         return (
           <div
             key={member.id}
-            className="absolute pointer-events-none"
+            className="absolute group pointer-events-auto cursor-default hover:z-[30]"
             style={{
               left: `${c.leftPct}%`,
               top: `${c.topPct}%`,
@@ -629,28 +683,21 @@ export function VenueCanvas({
               zIndex: c.zIndex,
             }}
           >
-            {userReactions.map((r) => (
+            <HeadReactionGlyphs reactions={userReactions} size={c.size} />
+            <div className="relative w-full">
+              <CrowdMemberBlob
+                color={resolveUserColor(c.userId, userColors.get(c.userId))}
+                size={c.size}
+                dance={c.dance}
+                animDuration={c.animDuration}
+              />
               <span
-                key={r.id}
-                className="absolute left-1/2 pointer-events-none z-[5] leading-none"
-                style={{
-                  top: -Math.round(c.size * 0.5),
-                  transform: `translateX(calc(-50% + ${r.offset}px))`,
-                  fontSize: Math.round(c.size * 0.42),
-                  color: r.color,
-                  textShadow: `0 0 12px ${r.color}`,
-                  animation: `ndl-rise ${(2.4 + r.delay).toFixed(2)}s ease-out forwards ${r.delay.toFixed(2)}s`,
-                }}
+                className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none z-10 border border-[var(--ndl-line)] bg-[var(--ndl-panel)] text-[var(--ndl-txt)] shadow-[0_4px_12px_#0006]"
+                aria-hidden
               >
-                {r.glyph}
+                {displayName}
               </span>
-            ))}
-            <CrowdMemberBlob
-              color={resolveUserColor(c.userId, userColors.get(c.userId))}
-              size={c.size}
-              dance={c.dance}
-              animDuration={c.animDuration}
-            />
+            </div>
           </div>
         );
       })}

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { NeedleLogo } from "@/components/shared/NeedleLogo";
 
 export async function Navbar() {
   const supabase = await createClient();
@@ -18,26 +19,26 @@ export async function Navbar() {
   }
 
   return (
-    <nav className="flex items-center justify-between px-6 py-4 border-b border-white/5">
-      <Link href="/" className="flex items-center gap-2 group">
-        <span className="text-2xl">🪡</span>
-        <span className="text-xl font-semibold tracking-tight group-hover:text-accent transition-colors">
+    <nav className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-[var(--ndl-line)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--ndl-bg0)_92%,transparent),transparent)]">
+      <Link href="/" className="flex items-center gap-2.5 group">
+        <NeedleLogo size={32} />
+        <span className="font-display text-xl font-extrabold tracking-tight group-hover:text-glow-soft transition-colors">
           Needle
         </span>
       </Link>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 sm:gap-4">
         {user ? (
           <>
             <Link
               href="/rooms/create"
-              className="text-sm text-muted hover:text-foreground transition-colors"
+              className="text-sm text-muted hover:text-glow-soft transition-colors font-medium"
             >
               Create Room
             </Link>
             <Link
               href={`/profile/${user.id}`}
-              className="text-sm text-muted hover:text-foreground transition-colors"
+              className="text-sm font-bold px-3 py-1 rounded-full border border-[var(--ndl-line)] hover:border-glow/40 transition-colors"
             >
               {profile?.display_name || "Profile"}
             </Link>
@@ -46,13 +47,13 @@ export async function Navbar() {
           <>
             <Link
               href="/auth/login"
-              className="text-sm text-muted hover:text-foreground transition-colors"
+              className="text-sm text-muted hover:text-foreground transition-colors font-medium"
             >
               Sign In
             </Link>
             <Link
               href="/auth/signup"
-              className="text-sm bg-accent text-background px-4 py-1.5 rounded-full font-medium hover:bg-accent/90 transition-colors"
+              className="text-sm btn-primary px-4 py-1.5 rounded-full font-bold"
             >
               Join
             </Link>

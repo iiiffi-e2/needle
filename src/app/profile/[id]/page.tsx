@@ -59,7 +59,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   if (s.awesome_votes_received > 20) knownFor.push("Room favorite");
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen venue-bg">
       <Navbar />
       <main className="max-w-3xl mx-auto px-4 py-10">
         <div className="flex items-center gap-5 mb-8">
@@ -69,7 +69,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
             size="lg"
           />
           <div>
-            <h1 className="text-2xl font-bold">
+            <h1 className="font-display text-2xl font-extrabold">
               {user.display_name || "Anonymous"}
             </h1>
             <p className="text-muted text-sm">
@@ -93,7 +93,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
             { label: "Rooms Joined", value: s.rooms_joined },
           ].map((stat) => (
             <div key={stat.label} className="glass-card rounded-xl p-4 text-center">
-              <p className="text-2xl font-bold text-accent">{stat.value}</p>
+              <p className="font-display text-2xl font-extrabold text-glow-soft">{stat.value}</p>
               <p className="text-xs text-muted mt-1">{stat.label}</p>
             </div>
           ))}

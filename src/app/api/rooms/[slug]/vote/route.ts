@@ -6,6 +6,7 @@ import {
   checkSkipThreshold,
   postSystemMessage,
 } from "@/lib/playback";
+import { bumpRoomEnergy, ENERGY_BUMP } from "@/lib/room-energy";
 
 export async function POST(
   request: Request,
@@ -47,19 +48,64 @@ export async function POST(
     return NextResponse.json({ error: "No track playing" }, { status: 400 });
   }
 
-  const { error } = await admin.from("track_votes").upsert(
-    {
-      room_id: room.id,
-      track_id: playback.current_track_id,
-      user_id: user.id,
-      vote_type: voteType,
-    },
-    { onConflict: "room_id,track_id,user_id,vote_type" }
-  );
+  const trackId = playback.current_track_id;
+
+  const { data: existingVotes } = await admin
+    .from("track_votes")
+    .select("vote_type")
+    .eq("room_id", room.id)
+    .eq("track_id", trackId)
+    .eq("user_id", user.id);
+
+  const hadSame = existingVotes?.some((v) => v.vote_type === voteType);
+  const hadOther = existingVotes?.find((v) => v.vote_type !== voteType);
+
+  if (hadSame) {
+    await admin
+      .from("track_votes")
+      .delete()
+      .eq("room_id", room.id)
+      .eq("track_id", trackId)
+      .eq("user_id", user.id)
+      .eq("vote_type", voteType);
+
+    const reverse =
+      voteType === "awesome" ? -ENERGY_BUMP.awesomeVote : -ENERGY_BUMP.lameVote;
+    await bumpRoomEnergy(admin, room.id, reverse);
+
+    return NextResponse.json({ removed: true, voteType: null, skipped: false });
+  }
+
+  if (hadOther) {
+    await admin
+      .from("track_votes")
+      .delete()
+      .eq("room_id", room.id)
+      .eq("track_id", trackId)
+      .eq("user_id", user.id)
+      .eq("vote_type", hadOther.vote_type);
+
+    const reverseOther =
+      hadOther.vote_type === "awesome"
+        ? -ENERGY_BUMP.awesomeVote
+        : -ENERGY_BUMP.lameVote;
+    await bumpRoomEnergy(admin, room.id, reverseOther);
+  }
+
+  const { error } = await admin.from("track_votes").insert({
+    room_id: room.id,
+    track_id: trackId,
+    user_id: user.id,
+    vote_type: voteType,
+  });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  const bump =
+    voteType === "awesome" ? ENERGY_BUMP.awesomeVote : ENERGY_BUMP.lameVote;
+  await bumpRoomEnergy(admin, room.id, bump);
 
   if (playback.current_dj_user_id) {
     const statField =
@@ -84,11 +130,7 @@ export async function POST(
   }
 
   if (voteType === "lame") {
-    const shouldSkip = await checkSkipThreshold(
-      admin,
-      room.id,
-      playback.current_track_id
-    );
+    const shouldSkip = await checkSkipThreshold(admin, room.id, trackId);
 
     if (shouldSkip) {
       await postSystemMessage(
@@ -97,9 +139,19 @@ export async function POST(
         "The room lamed this song into the shadow realm. ⏭️"
       );
       await advancePlayback(admin, room.id, "skipped");
-      return NextResponse.json({ voted: true, skipped: true });
+      return NextResponse.json({
+        voted: true,
+        voteType,
+        skipped: true,
+        removed: false,
+      });
     }
   }
 
-  return NextResponse.json({ voted: true, skipped: false });
+  return NextResponse.json({
+    voted: true,
+    voteType,
+    skipped: false,
+    removed: false,
+  });
 }

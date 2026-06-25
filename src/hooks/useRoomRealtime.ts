@@ -12,6 +12,7 @@ interface UseRoomRealtimeOptions {
   onDjChange: () => void;
   onQueueChange: () => void;
   onVotesChange: () => void;
+  onEnergyChange: () => void;
 }
 
 export function useRoomRealtime({
@@ -22,6 +23,7 @@ export function useRoomRealtime({
   onDjChange,
   onQueueChange,
   onVotesChange,
+  onEnergyChange,
 }: UseRoomRealtimeOptions) {
   const supabase = createClient();
   const presenceInterval = useRef<NodeJS.Timeout | null>(null);
@@ -31,6 +33,7 @@ export function useRoomRealtime({
   const refreshDj = useCallback(onDjChange, [onDjChange]);
   const refreshQueue = useCallback(onQueueChange, [onQueueChange]);
   const refreshVotes = useCallback(onVotesChange, [onVotesChange]);
+  const refreshEnergy = useCallback(onEnergyChange, [onEnergyChange]);
 
   useEffect(() => {
     const channel = supabase
@@ -98,6 +101,16 @@ export function useRoomRealtime({
       .on(
         "postgres_changes",
         {
+          event: "UPDATE",
+          schema: "public",
+          table: "rooms",
+          filter: `id=eq.${roomId}`,
+        },
+        () => refreshEnergy()
+      )
+      .on(
+        "postgres_changes",
+        {
           event: "INSERT",
           schema: "public",
           table: "chat_messages",
@@ -154,5 +167,6 @@ export function useRoomRealtime({
     refreshDj,
     refreshQueue,
     refreshVotes,
+    refreshEnergy,
   ]);
 }

@@ -78,6 +78,11 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Design
 
-Dark, warm, late-night aesthetic. The room is the product — not a dashboard.
+Warm late-night venue aesthetic — the room is the product, not a dashboard.
 
-Colors: `#0F0E17` background, `#FF8906` accent, `#E53170` secondary.
+- **Fonts:** Bricolage Grotesque (display) + Hanken Grotesk (body)
+- **Palette:** amber glow (`#ff9d3c`), warm browns (`#1c120b`), violet accent (`#7b5cff`)
+- **Avatars:** vinyl blob characters with idle, dance, react, DJ, and "you" variants
+- **Room energy:** server-synced 0–100 meter driven by votes, chat, reactions, and deck activity
+
+Run migration `supabase/migrations/002_room_energy.sql` and enable Realtime on `rooms` for live energy sync.

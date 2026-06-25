@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { RoomClient } from "@/components/room/RoomClient";
 import { postSystemMessage } from "@/lib/playback";
+import { bumpRoomEnergy, ENERGY_BUMP, syncRoomEnergyDecay } from "@/lib/room-energy";
 
 interface RoomPageProps {
   params: Promise<{ slug: string }>;
@@ -56,6 +57,8 @@ export default async function RoomPage({ params }: RoomPageProps) {
       room.id,
       `${profile?.display_name || "Someone"} joined the room.`
     );
+
+    await bumpRoomEnergy(admin, room.id, ENERGY_BUMP.joinRoom);
   } else {
     await admin
       .from("room_members")
@@ -140,9 +143,12 @@ export default async function RoomPage({ params }: RoomPageProps) {
     userSaved = !!saved;
   }
 
+  const { energy: roomEnergy, updatedAt: energyUpdatedAt } =
+    await syncRoomEnergyDecay(admin, room.id);
+
   return (
     <RoomClient
-      room={room}
+      room={{ ...room, room_energy: roomEnergy, room_energy_updated_at: energyUpdatedAt }}
       initialData={{
         playback: playback || null,
         members: members || [],
@@ -154,6 +160,8 @@ export default async function RoomPage({ params }: RoomPageProps) {
         userSaved,
         currentUserId: user.id,
         messages: messages || [],
+        energy: roomEnergy,
+        energyUpdatedAt,
       }}
     />
   );

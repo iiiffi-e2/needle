@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { postSystemMessage } from "@/lib/playback";
+import { bumpRoomEnergy, ENERGY_BUMP } from "@/lib/room-energy";
 
 export async function POST(
   _request: Request,
@@ -86,6 +87,8 @@ export async function POST(
       room.id,
       `🎤 ${profile?.display_name || "Someone"} joined the booth.`
     );
+
+    await bumpRoomEnergy(admin, room.id, ENERGY_BUMP.joinDeck);
 
     return NextResponse.json({ slot, waitlisted: false });
   }

@@ -17,6 +17,8 @@ export interface Room {
   lame_skip_percentage: number;
   lame_skip_minimum: number;
   is_private: boolean;
+  room_energy?: number;
+  room_energy_updated_at?: string;
   created_by: string | null;
   created_at: string;
   updated_at: string;

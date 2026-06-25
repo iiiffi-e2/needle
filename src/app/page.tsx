@@ -4,11 +4,11 @@ import { RoomDirectory } from "@/components/room/RoomDirectory";
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen venue-bg">
       <Navbar />
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
         <div className="mb-10">
-          <h1 className="text-3xl sm:text-4xl font-bold mb-3">
+          <h1 className="font-display text-3xl sm:text-4xl font-extrabold mb-3 tracking-tight">
             Live rooms, right now
           </h1>
           <p className="text-muted text-lg max-w-xl">

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { parseYouTubeUrl, fetchYouTubeMetadata } from "@/lib/youtube";
 import { postSystemMessage } from "@/lib/playback";
+import { bumpRoomEnergy, ENERGY_BUMP } from "@/lib/room-energy";
 
 export async function POST(
   request: Request,
@@ -114,6 +115,8 @@ export async function POST(
     room.id,
     `🎧 ${profile?.display_name || "A DJ"} dropped a track: ${track.title}`
   );
+
+  await bumpRoomEnergy(admin, room.id, ENERGY_BUMP.dropTrack);
 
   // Reset missed turns when adding a track
   await admin

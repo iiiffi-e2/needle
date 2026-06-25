@@ -4,6 +4,7 @@ import { useState, Suspense } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { NeedleLogo } from "@/components/shared/NeedleLogo";
 
 function SignupForm() {
   const [email, setEmail] = useState("");
@@ -59,7 +60,7 @@ function SignupForm() {
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
           placeholder="DJ Handle"
-          className="w-full bg-surface-light border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-accent/50"
+          className="w-full input-venue rounded-xl px-4 py-2.5 text-sm"
         />
       </div>
       <div>
@@ -68,7 +69,7 @@ function SignupForm() {
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full bg-surface-light border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-accent/50"
+          className="w-full input-venue rounded-xl px-4 py-2.5 text-sm"
           required
         />
       </div>
@@ -79,7 +80,7 @@ function SignupForm() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           minLength={6}
-          className="w-full bg-surface-light border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-accent/50"
+          className="w-full input-venue rounded-xl px-4 py-2.5 text-sm"
           required
         />
       </div>
@@ -89,7 +90,7 @@ function SignupForm() {
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-accent text-background py-2.5 rounded-full font-medium hover:bg-accent/90 transition-colors disabled:opacity-50"
+        className="w-full btn-primary py-2.5 rounded-full font-bold disabled:opacity-50"
       >
         {loading ? "Creating account..." : "Create Account"}
       </button>
@@ -99,14 +100,14 @@ function SignupForm() {
 
 export default function SignupPage() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4">
-      <Link href="/" className="flex items-center gap-2 mb-8">
-        <span className="text-3xl">🪡</span>
-        <span className="text-2xl font-semibold">Needle</span>
+    <div className="min-h-screen venue-bg flex flex-col items-center justify-center px-4">
+      <Link href="/" className="flex items-center gap-2.5 mb-8">
+        <NeedleLogo size={40} />
+        <span className="font-display text-2xl font-extrabold">Needle</span>
       </Link>
 
       <div className="glass-card rounded-2xl p-8 w-full max-w-md">
-        <h1 className="text-xl font-semibold mb-1">Join the party</h1>
+        <h1 className="font-display text-xl font-extrabold mb-1">Join the party</h1>
         <p className="text-sm text-muted mb-6">
           Create an account to enter live music rooms.
         </p>
@@ -117,7 +118,7 @@ export default function SignupPage() {
 
         <p className="text-sm text-muted text-center mt-6">
           Already have an account?{" "}
-          <Link href="/auth/login" className="text-accent hover:underline">
+          <Link href="/auth/login" className="text-glow-soft font-bold hover:underline">
             Sign In
           </Link>
         </p>

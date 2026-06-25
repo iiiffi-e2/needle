@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
+import { bumpRoomEnergy, ENERGY_BUMP } from "@/lib/room-energy";
 
 export async function POST(
   request: Request,
@@ -45,6 +46,8 @@ export async function POST(
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  await bumpRoomEnergy(admin, room.id, ENERGY_BUMP.chat);
 
   return NextResponse.json(message);
 }

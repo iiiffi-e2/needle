@@ -60,7 +60,7 @@ export function CreateRoomForm() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Late Night Indie Funeral"
-          className="w-full bg-surface-light border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-accent/50"
+          className="w-full input-venue rounded-xl px-4 py-2.5 text-sm"
           required
         />
       </div>
@@ -74,7 +74,7 @@ export function CreateRoomForm() {
           value={vibe}
           onChange={(e) => setVibe(e.target.value)}
           placeholder="Sad bangers for people who still believe in choruses"
-          className="w-full bg-surface-light border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-accent/50"
+          className="w-full input-venue rounded-xl px-4 py-2.5 text-sm"
         />
       </div>
 
@@ -87,7 +87,7 @@ export function CreateRoomForm() {
           onChange={(e) => setDescription(e.target.value)}
           placeholder="What's this room about?"
           rows={3}
-          className="w-full bg-surface-light border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-accent/50 resize-none"
+          className="w-full input-venue rounded-xl px-4 py-2.5 text-sm resize-none"
         />
       </div>
 
@@ -100,7 +100,7 @@ export function CreateRoomForm() {
           value={tags}
           onChange={(e) => setTags(e.target.value)}
           placeholder="indie, sad, late-night"
-          className="w-full bg-surface-light border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-accent/50"
+          className="w-full input-venue rounded-xl px-4 py-2.5 text-sm"
         />
       </div>
 
@@ -109,7 +109,7 @@ export function CreateRoomForm() {
       <button
         type="submit"
         disabled={loading || !name.trim()}
-        className="w-full bg-accent text-background py-3 rounded-full font-medium hover:bg-accent/90 transition-colors disabled:opacity-50"
+        className="w-full btn-primary py-3 rounded-full font-bold disabled:opacity-50"
       >
         {loading ? "Creating..." : "Open the Room"}
       </button>

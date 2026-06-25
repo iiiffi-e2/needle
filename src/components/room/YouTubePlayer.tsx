@@ -63,6 +63,7 @@ function loadYouTubeAPI(): Promise<void> {
   });
 }
 
+/** Hidden audio-only YouTube player — controls playback without showing video. */
 export function YouTubePlayer({
   videoId,
   startedAt,
@@ -92,7 +93,6 @@ export function YouTubePlayer({
         controls: 0,
         modestbranding: 1,
         rel: 0,
-        showinfo: 0,
         fs: 0,
       },
       events: {
@@ -134,7 +134,6 @@ export function YouTubePlayer({
     }
   }, [isPaused]);
 
-  // Fallback timer if YouTube doesn't fire ended event
   useEffect(() => {
     if (!startedAt || !durationSeconds) return;
 
@@ -154,8 +153,12 @@ export function YouTubePlayer({
   }, [startedAt, durationSeconds, videoId]);
 
   return (
-    <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-surface-light">
-      <div ref={containerRef} className="w-full h-full" />
+    <div
+      className="fixed w-px h-px overflow-hidden opacity-0 pointer-events-none"
+      style={{ left: -9999, top: -9999 }}
+      aria-hidden
+    >
+      <div ref={containerRef} />
     </div>
   );
 }

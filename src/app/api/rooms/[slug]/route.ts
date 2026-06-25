@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { postSystemMessage } from "@/lib/playback";
 import { generateNeedlebotMessage, shouldNeedlebotSpeak } from "@/lib/needlebot";
+import { bumpRoomEnergy, ENERGY_BUMP, syncRoomEnergyDecay } from "@/lib/room-energy";
 
 export async function GET(
   _request: Request,
@@ -20,6 +21,9 @@ export async function GET(
   if (error || !room) {
     return NextResponse.json({ error: "Room not found" }, { status: 404 });
   }
+
+  const { energy: roomEnergy, updatedAt: energyUpdatedAt } =
+    await syncRoomEnergyDecay(admin, room.id);
 
   const [
     { data: playback },
@@ -100,7 +104,11 @@ export async function GET(
   }
 
   return NextResponse.json({
-    room,
+    room: {
+      ...room,
+      room_energy: roomEnergy,
+      room_energy_updated_at: energyUpdatedAt,
+    },
     playback,
     members: members || [],
     djSlots: djSlots || [],
@@ -153,6 +161,8 @@ export async function POST(
     },
     { onConflict: "room_id,user_id" }
   );
+
+  await bumpRoomEnergy(admin, room.id, ENERGY_BUMP.joinRoom);
 
   await postSystemMessage(
     admin,

@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import { Navbar } from "@/components/shared/Navbar";
 import { UserAvatar } from "@/components/shared/UserAvatar";
+import { ProfileColorSettings } from "@/components/profile/ProfileColorSettings";
 import { createServiceClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { formatDuration } from "@/lib/utils";
 
 interface ProfilePageProps {
@@ -11,6 +13,11 @@ interface ProfilePageProps {
 export default async function ProfilePage({ params }: ProfilePageProps) {
   const { id } = await params;
   const admin = createServiceClient();
+  const supabase = await createClient();
+  const {
+    data: { user: sessionUser },
+  } = await supabase.auth.getUser();
+  const isOwnProfile = sessionUser?.id === id;
 
   const { data: user } = await admin
     .from("users")
@@ -66,6 +73,8 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
           <UserAvatar
             name={user.display_name}
             avatarUrl={user.avatar_url}
+            userId={user.id}
+            avatarColor={user.avatar_color}
             size="lg"
           />
           <div>
@@ -81,6 +90,13 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
             </p>
           </div>
         </div>
+
+        {isOwnProfile && (
+          <ProfileColorSettings
+            userId={user.id}
+            initialColor={user.avatar_color}
+          />
+        )}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
           {[

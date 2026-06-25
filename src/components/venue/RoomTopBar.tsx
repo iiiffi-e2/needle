@@ -5,6 +5,7 @@ import type { Room, User } from "@/lib/types";
 import { NeedleLogo } from "@/components/shared/NeedleLogo";
 import { EnergyMeter } from "./EnergyMeter";
 import { getInitials } from "@/lib/utils";
+import { resolveUserColor } from "@/lib/design-tokens";
 
 interface RoomTopBarProps {
   room: Room;
@@ -88,11 +89,10 @@ export function RoomTopBar({
       {currentUser && (
         <Link
           href={`/profile/${currentUser.id}`}
-          className="w-[34px] h-[34px] rounded-full shrink-0 flex items-center justify-center font-extrabold text-[13px] text-white"
+          className="w-[34px] h-[34px] rounded-full shrink-0 flex items-center justify-center font-extrabold text-[13px] text-[#1c1414]"
           style={{
-            background: "linear-gradient(140deg, var(--neon), #a98bff)",
-            boxShadow:
-              "0 0 0 2px var(--bg1), 0 0 14px rgba(123, 92, 255, 0.6)",
+            background: `radial-gradient(circle at 38% 26%, #ffffff8c, #ffffff00 46%), ${resolveUserColor(currentUser.id, currentUser.avatar_color)}`,
+            boxShadow: `0 0 0 2px var(--bg1), 0 0 14px ${resolveUserColor(currentUser.id, currentUser.avatar_color)}88`,
           }}
         >
           {getInitials(currentUser.display_name)}

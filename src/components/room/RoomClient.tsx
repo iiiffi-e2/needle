@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { RoomTopBar } from "@/components/venue/RoomTopBar";
 import { VenueCanvas } from "@/components/venue/VenueCanvas";
 import { NowPlayingPanel } from "@/components/venue/NowPlayingPanel";
@@ -14,6 +14,10 @@ import { RoomSidePanel, type TabId } from "@/components/venue/RoomSidePanel";
 import { YouTubePlayer } from "@/components/room/YouTubePlayer";
 import { useRoomRealtime } from "@/hooks/useRoomRealtime";
 import { getEffectiveEnergy } from "@/lib/room-energy";
+import {
+  HEAD_REACTION_DURATION_MS,
+  type CrowdHeadReaction,
+} from "@/lib/crowd-reactions";
 import type {
   Room,
   RoomPlayback,
@@ -61,6 +65,8 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
   );
   const [energy, setEnergy] = useState(initialData.energy);
   const [bursts, setBursts] = useState<ReactionBurst[]>([]);
+  const [headReactions, setHeadReactions] = useState<CrowdHeadReaction[]>([]);
+  const headReactionCounts = useRef<Map<string, number>>(new Map());
   const [toast, setToast] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [playerDuration, setPlayerDuration] = useState<number | null>(null);
@@ -87,7 +93,40 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
     }
   }, [room.slug]);
 
-  useRoomRealtime({
+  const spawnHeadReaction = useCallback(
+    (userId: string, glyph: string, color: string) => {
+      const count = headReactionCounts.current.get(userId) ?? 0;
+      headReactionCounts.current.set(userId, count + 1);
+
+      const id = Math.random().toString(36).slice(2);
+      const delay = (count % 4) * 0.12;
+      const offset = ((count % 5) - 2) * 6;
+      const reaction: CrowdHeadReaction = {
+        id,
+        userId,
+        glyph,
+        color,
+        delay,
+        offset,
+      };
+
+      setHeadReactions((prev) => [...prev, reaction]);
+      setTimeout(() => {
+        setHeadReactions((prev) => prev.filter((r) => r.id !== id));
+      }, HEAD_REACTION_DURATION_MS + delay * 1000);
+    },
+    []
+  );
+
+  const handleRemoteCrowdReact = useCallback(
+    (payload: { userId: string; glyph: string; color: string }) => {
+      if (payload.userId === initialData.currentUserId) return;
+      spawnHeadReaction(payload.userId, payload.glyph, payload.color);
+    },
+    [initialData.currentUserId, spawnHeadReaction]
+  );
+
+  const { broadcastCrowdReact } = useRoomRealtime({
     roomId: room.id,
     roomSlug: room.slug,
     onPlaybackChange: refresh,
@@ -96,7 +135,21 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
     onQueueChange: refresh,
     onVotesChange: refresh,
     onEnergyChange: refresh,
+    onCrowdReact: handleRemoteCrowdReact,
   });
+
+  const handleQuickReact = useCallback(
+    (glyph: string, color: string, _type: string) => {
+      if (!initialData.currentUserId) return;
+      spawnHeadReaction(initialData.currentUserId, glyph, color);
+      broadcastCrowdReact({
+        userId: initialData.currentUserId,
+        glyph,
+        color,
+      });
+    },
+    [initialData.currentUserId, spawnHeadReaction, broadcastCrowdReact]
+  );
 
   useEffect(() => {
     const tick = () => {
@@ -141,6 +194,8 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
     }, 1400);
     return () => clearInterval(id);
   }, [energy, fling]);
+
+  const currentUserId = initialData.currentUserId;
 
   const handleTrackEnded = useCallback(async () => {
     await fetch(`/api/rooms/${room.slug}/advance`, {
@@ -239,7 +294,7 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
   const handleDurationReady = useCallback((seconds: number) => {
     setPlayerDuration(seconds);
   }, []);
-  const currentUserId = initialData.currentUserId;
+
   const djUserIds = useMemo(
     () => new Set(djSlots.map((s) => s.user_id)),
     [djSlots]
@@ -288,13 +343,14 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
               currentUserId={currentUserId}
               energy={energy}
               marquee={marquee}
+              headReactions={headReactions}
               canJoinDeck={!isUserDj && !isUserWaitlisted && !!currentUserId}
               onJoinDeck={handleJoinDeck}
               onLeaveDeck={handleLeaveDeck}
               deckLoading={deckLoading}
             />
             <ReactionBursts bursts={bursts} />
-            <QuickReacts roomSlug={room.slug} onBurst={fling} />
+            <QuickReacts roomSlug={room.slug} onReact={handleQuickReact} />
             <NowPlayingPanel
               playback={playback}
               track={track}

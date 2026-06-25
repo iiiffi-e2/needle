@@ -1,10 +1,11 @@
 import { cn, getInitials } from "@/lib/utils";
-import { crowdColorForUser } from "@/lib/design-tokens";
+import { resolveUserColor } from "@/lib/design-tokens";
 
 interface UserAvatarProps {
   name?: string | null;
   avatarUrl?: string | null;
   userId?: string | null;
+  avatarColor?: string | null;
   size?: "sm" | "md" | "lg";
   className?: string;
   isActive?: boolean;
@@ -20,6 +21,7 @@ export function UserAvatar({
   name,
   avatarUrl,
   userId,
+  avatarColor,
   size = "md",
   className,
   isActive,
@@ -41,7 +43,9 @@ export function UserAvatar({
     );
   }
 
-  const color = userId ? crowdColorForUser(userId) : "#8a7bff";
+  const color = userId
+    ? resolveUserColor(userId, avatarColor)
+    : "#8a7bff";
 
   return (
     <div

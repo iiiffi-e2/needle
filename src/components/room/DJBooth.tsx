@@ -45,6 +45,8 @@ export function DJSlotComponent({
       <UserAvatar
         name={slot.user.display_name}
         avatarUrl={slot.user.avatar_url}
+        userId={slot.user_id}
+        avatarColor={slot.user.avatar_color}
         size="lg"
         isActive={isCurrentTurn}
       />

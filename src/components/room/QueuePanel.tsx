@@ -37,6 +37,8 @@ export function QueuePanel({
             <UserAvatar
               name={currentDj.user?.display_name}
               avatarUrl={currentDj.user?.avatar_url}
+              userId={currentDj.user_id}
+              avatarColor={currentDj.user?.avatar_color}
               size="sm"
             />
             <span className="text-sm font-medium">
@@ -53,6 +55,8 @@ export function QueuePanel({
             <UserAvatar
               name={nextDj.user?.display_name}
               avatarUrl={nextDj.user?.avatar_url}
+              userId={nextDj.user_id}
+              avatarColor={nextDj.user?.avatar_color}
               size="sm"
             />
             <span className="text-sm">{nextDj.user?.display_name}</span>
@@ -80,6 +84,8 @@ export function QueuePanel({
               <UserAvatar
                 name={slot.user?.display_name}
                 avatarUrl={slot.user?.avatar_url}
+                userId={slot.user_id}
+                avatarColor={slot.user?.avatar_color}
                 size="sm"
               />
               {queued?.track ? (

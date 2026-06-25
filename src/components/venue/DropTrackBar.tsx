@@ -55,6 +55,8 @@ export function DropTrackBar({
     }
   };
 
+  if (!isDj) return null;
+
   return (
     <div
       className="relative z-40 shrink-0 flex items-center gap-3 px-[22px]"

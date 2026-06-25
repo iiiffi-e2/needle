@@ -143,7 +143,13 @@ export function NowPlaying({
 
         {dj && (
           <div className="flex items-center gap-2 mt-3">
-            <UserAvatar name={dj.display_name} avatarUrl={dj.avatar_url} size="sm" />
+            <UserAvatar
+              name={dj.display_name}
+              avatarUrl={dj.avatar_url}
+              userId={dj.id}
+              avatarColor={dj.avatar_color}
+              size="sm"
+            />
             <span className="text-sm text-muted">
               Played by{" "}
               <span className="text-foreground">{dj.display_name}</span>

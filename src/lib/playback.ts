@@ -16,6 +16,8 @@ export async function postSystemMessage(
 export interface AdvancePlaybackOptions {
   /** When true, play the current DJ's next queued track instead of rotating. */
   stayOnCurrentDj?: boolean;
+  /** Booth position of a DJ who just stepped off; advance to the next DJ in line. */
+  afterDepartedDjPosition?: number;
 }
 
 export async function advancePlayback(
@@ -96,6 +98,14 @@ export async function advancePlayback(
           }
         }
       }
+    } else if (
+      options.afterDepartedDjPosition != null &&
+      djSlots.length > 0
+    ) {
+      const nextIndex = djSlots.findIndex(
+        (s) => s.position > options.afterDepartedDjPosition!
+      );
+      startIndex = nextIndex >= 0 ? nextIndex : 0;
     }
   }
 

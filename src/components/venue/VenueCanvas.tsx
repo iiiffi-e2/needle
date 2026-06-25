@@ -1,12 +1,36 @@
 "use client";
 
+import { memo, useMemo } from "react";
 import type { DjSlot, RoomMember, User } from "@/lib/types";
 import { VinylBlob } from "@/components/avatars/VinylBlob";
 import {
   assignCrowdLayout,
-  crowdColorForUser,
+  resolveUserColor,
 } from "@/lib/design-tokens";
+import type { CrowdHeadReaction } from "@/lib/crowd-reactions";
 import { getInitials } from "@/lib/utils";
+
+const CrowdMemberBlob = memo(function CrowdMemberBlob({
+  color,
+  size,
+  dance,
+  animDuration,
+}: {
+  color: string;
+  size: number;
+  dance: boolean;
+  animDuration: number;
+}) {
+  return (
+    <VinylBlob
+      color={color}
+      size={size}
+      dance={dance}
+      showRing={dance}
+      animDuration={animDuration}
+    />
+  );
+});
 
 const RIG_LIGHTS = [
   { x: 12.77, dur: "5s", delay: "0s" },
@@ -47,7 +71,10 @@ function DeckSlot({
       <div className="flex flex-col items-center pointer-events-auto">
         <VinylBlob
           variant={isCurrentUser ? "you" : "crowd"}
-          color={crowdColorForUser(occupant.user_id)}
+          color={resolveUserColor(
+            occupant.user_id,
+            occupant.user?.avatar_color
+          )}
           size={60}
           dance
           showRing
@@ -134,6 +161,7 @@ export interface VenueCanvasProps {
   currentUserId: string | null;
   energy: number;
   marquee: string;
+  headReactions: CrowdHeadReaction[];
   canJoinDeck: boolean;
   onJoinDeck: () => void;
   onLeaveDeck: () => void;
@@ -149,6 +177,7 @@ export function VenueCanvas({
   currentUserId,
   energy,
   marquee,
+  headReactions,
   canJoinDeck,
   onJoinDeck,
   onLeaveDeck,
@@ -174,9 +203,24 @@ export function VenueCanvas({
         new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime()
     );
 
-  const crowd = assignCrowdLayout(
-    listeners.map((m) => m.user_id),
-    energy
+  const userColors = new Map(
+    members.map((m) => [m.user_id, m.user?.avatar_color])
+  );
+
+  const crowd = useMemo(
+    () => assignCrowdLayout(listeners.map((m) => m.user_id)),
+    [listeners]
+  );
+
+  const reactionsByUser = useMemo(
+    () =>
+      headReactions.reduce<Map<string, CrowdHeadReaction[]>>((map, reaction) => {
+        const list = map.get(reaction.userId) ?? [];
+        list.push(reaction);
+        map.set(reaction.userId, list);
+        return map;
+      }, new Map()),
+    [headReactions]
   );
 
   return (
@@ -432,6 +476,10 @@ export function VenueCanvas({
               )}
               <VinylBlob
                 variant="dj"
+                color={resolveUserColor(
+                  currentDj.id,
+                  currentDj.avatar_color
+                )}
                 size={66}
                 dance={!isDjSleeping}
                 showRing
@@ -459,6 +507,21 @@ export function VenueCanvas({
               >
                 {isDjSleeping ? "RESTING" : "ON DECK"}
               </div>
+              {currentDj.id === currentUserId && (
+                <button
+                  type="button"
+                  onClick={onLeaveDeck}
+                  disabled={deckLoading}
+                  className="mt-2 px-2.5 py-0.5 rounded-full border font-bold text-[9.5px] cursor-pointer disabled:opacity-50"
+                  style={{
+                    borderColor: "var(--line)",
+                    background: "#ffffff10",
+                    color: "var(--sub)",
+                  }}
+                >
+                  Step off
+                </button>
+              )}
             </div>
           </>
         ) : (
@@ -550,9 +613,10 @@ export function VenueCanvas({
       </div>
 
       {/* Crowd avatars */}
-      {crowd.map((c, i) => {
+      {crowd.map((c) => {
         const member = listeners.find((m) => m.user_id === c.userId);
         if (!member) return null;
+        const userReactions = reactionsByUser.get(c.userId) ?? [];
         return (
           <div
             key={member.id}
@@ -565,15 +629,26 @@ export function VenueCanvas({
               zIndex: c.zIndex,
             }}
           >
-            <VinylBlob
-              color={crowdColorForUser(c.userId)}
+            {userReactions.map((r) => (
+              <span
+                key={r.id}
+                className="absolute left-1/2 pointer-events-none z-[5] leading-none"
+                style={{
+                  top: -Math.round(c.size * 0.5),
+                  transform: `translateX(calc(-50% + ${r.offset}px))`,
+                  fontSize: Math.round(c.size * 0.42),
+                  color: r.color,
+                  textShadow: `0 0 12px ${r.color}`,
+                  animation: `ndl-rise ${(2.4 + r.delay).toFixed(2)}s ease-out forwards ${r.delay.toFixed(2)}s`,
+                }}
+              >
+                {r.glyph}
+              </span>
+            ))}
+            <CrowdMemberBlob
+              color={resolveUserColor(c.userId, userColors.get(c.userId))}
               size={c.size}
               dance={c.dance}
-              showRing={c.dance}
-              showReact={c.showReact}
-              reactGlyph={c.reactGlyph}
-              reactColor={c.reactColor}
-              reactDelay={i * 0.45}
               animDuration={c.animDuration}
             />
           </div>

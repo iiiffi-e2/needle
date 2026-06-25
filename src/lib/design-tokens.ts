@@ -41,30 +41,29 @@ export function crowdColorForUser(userId: string): string {
   return CROWD_COLORS[hashUserId(userId) % CROWD_COLORS.length];
 }
 
+/** Prefer stored avatar_color; fall back to deterministic hash color. */
+export function resolveUserColor(
+  userId: string,
+  avatarColor?: string | null
+): string {
+  if (avatarColor) return avatarColor;
+  return crowdColorForUser(userId);
+}
+
 export interface CrowdLayoutItem {
   userId: string;
   leftPct: number;
   topPct: number;
   size: number;
   dance: boolean;
-  reactGlyph: string;
-  reactColor: string;
   zIndex: number;
   animDuration: number;
-  showReact: boolean;
 }
 
-export function assignCrowdLayout(
-  listenerIds: string[],
-  energy: number
-): CrowdLayoutItem[] {
-  const reactN = Math.floor(energy / 16);
-  const speed = 1 - energy / 100;
-
+export function assignCrowdLayout(listenerIds: string[]): CrowdLayoutItem[] {
   return listenerIds.map((userId, i) => {
     const spec = CROWD_SPEC[i % CROWD_SPEC.length];
     const h = hashUserId(userId);
-    const color = crowdColorForUser(userId);
 
     let leftPct: number;
     let topPct: number;
@@ -89,13 +88,8 @@ export function assignCrowdLayout(
       topPct,
       size,
       dance,
-      reactGlyph: REACT_GLYPHS[i % REACT_GLYPHS.length],
-      reactColor: color,
       zIndex: Math.round((i < CROWD_SPEC.length ? spec.y : topPct * 7)),
-      animDuration: dance
-        ? 1.7 * speed + i * 0.1
-        : 3 * speed + i * 0.18,
-      showReact: i < reactN,
+      animDuration: dance ? 1.7 + i * 0.1 : 3 + i * 0.18,
     };
   });
 }

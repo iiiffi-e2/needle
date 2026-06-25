@@ -47,21 +47,19 @@ export function VinylBlob({
   const isDj = variant === "dj";
   const isYou = variant === "you";
 
-  const bodyBg = isDj
-    ? "radial-gradient(circle at 40% 28%, #ffffff88, #ffffff00 46%), linear-gradient(165deg, #ff9b6b, #e8552f)"
-    : isYou
-      ? "radial-gradient(circle at 40% 28%, #ffffff88, #ffffff00 46%), linear-gradient(165deg, #a98bff, #6f4cff)"
-      : `radial-gradient(circle at 38% 26%, #ffffff8c, #ffffff00 46%), ${color}`;
+  const colorGradient = `radial-gradient(circle at 38% 26%, #ffffff8c, #ffffff00 46%), ${color}`;
+
+  const bodyBg = isDj || isYou
+    ? `radial-gradient(circle at 40% 28%, #ffffff88, #ffffff00 46%), ${color}`
+    : colorGradient;
 
   const borderRadius = isDj || isYou
     ? "48% 48% 44% 44% / 56% 56% 44% 44%"
     : "46% 46% 42% 42% / 54% 54% 46% 46%";
 
-  const ringColor = isDj
-    ? "color-mix(in srgb, var(--ndl-glow) 55%, transparent)"
-    : isYou
-      ? "color-mix(in srgb, var(--ndl-neon) 55%, transparent)"
-      : `${color}38`;
+  const ringColor = isDj || isYou
+    ? `${color}55`
+    : `${color}38`;
 
   return (
     <div className={cn("relative", className)} style={style}>

@@ -168,13 +168,21 @@ export async function DELETE(
     return NextResponse.json({ error: "Room not found" }, { status: 404 });
   }
 
+  const { data: leavingSlot } = await admin
+    .from("dj_slots")
+    .select("id, position")
+    .eq("room_id", room.id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
   const { data: playback } = await admin
     .from("room_playback")
-    .select("current_dj_user_id")
+    .select("current_dj_user_id, current_track_id")
     .eq("room_id", room.id)
     .maybeSingle();
 
   const wasCurrentDj = playback?.current_dj_user_id === user.id;
+  const wasPlaying = wasCurrentDj && !!playback?.current_track_id;
 
   await admin
     .from("dj_slots")
@@ -195,6 +203,12 @@ export async function DELETE(
     .eq("dj_user_id", user.id)
     .eq("status", "queued");
 
+  await admin
+    .from("room_members")
+    .update({ role: "listener" })
+    .eq("room_id", room.id)
+    .eq("user_id", user.id);
+
   const { data: profile } = await admin
     .from("users")
     .select("display_name")
@@ -204,12 +218,16 @@ export async function DELETE(
   await postSystemMessage(
     admin,
     room.id,
-    `${profile?.display_name || "Someone"} left the booth.`
+    wasPlaying
+      ? `🚪 ${profile?.display_name || "The DJ"} stepped off — track cut short.`
+      : `${profile?.display_name || "Someone"} left the booth.`
   );
 
   if (wasCurrentDj) {
     const { advancePlayback } = await import("@/lib/playback");
-    await advancePlayback(admin, room.id, "ended");
+    await advancePlayback(admin, room.id, wasPlaying ? "skipped" : "ended", {
+      afterDepartedDjPosition: leavingSlot?.position,
+    });
   }
 
   return NextResponse.json({ left: true });

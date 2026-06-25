@@ -4,6 +4,12 @@ import { useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { ChatMessage } from "@/lib/types";
 
+export interface CrowdReactPayload {
+  userId: string;
+  glyph: string;
+  color: string;
+}
+
 interface UseRoomRealtimeOptions {
   roomId: string;
   roomSlug: string;
@@ -13,6 +19,7 @@ interface UseRoomRealtimeOptions {
   onQueueChange: () => void;
   onVotesChange: () => void;
   onEnergyChange: () => void;
+  onCrowdReact?: (payload: CrowdReactPayload) => void;
 }
 
 export function useRoomRealtime({
@@ -24,9 +31,11 @@ export function useRoomRealtime({
   onQueueChange,
   onVotesChange,
   onEnergyChange,
+  onCrowdReact,
 }: UseRoomRealtimeOptions) {
   const supabase = createClient();
   const presenceInterval = useRef<NodeJS.Timeout | null>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   const refreshPlayback = useCallback(onPlaybackChange, [onPlaybackChange]);
   const refreshMembers = useCallback(onMembersChange, [onMembersChange]);
@@ -34,6 +43,10 @@ export function useRoomRealtime({
   const refreshQueue = useCallback(onQueueChange, [onQueueChange]);
   const refreshVotes = useCallback(onVotesChange, [onVotesChange]);
   const refreshEnergy = useCallback(onEnergyChange, [onEnergyChange]);
+  const handleCrowdReact = useCallback(
+    (payload: CrowdReactPayload) => onCrowdReact?.(payload),
+    [onCrowdReact]
+  );
 
   useEffect(() => {
     const channel = supabase
@@ -128,7 +141,12 @@ export function useRoomRealtime({
           }
         }
       )
+      .on("broadcast", { event: "crowd_react" }, ({ payload }) => {
+        handleCrowdReact(payload as CrowdReactPayload);
+      })
       .subscribe();
+
+    channelRef.current = channel;
 
     // Heartbeat presence
     const ping = () => {
@@ -150,6 +168,7 @@ export function useRoomRealtime({
     }, 120000);
 
     return () => {
+      channelRef.current = null;
       supabase.removeChannel(channel);
       if (presenceInterval.current) clearInterval(presenceInterval.current);
       clearInterval(needlebotTimer);
@@ -168,5 +187,16 @@ export function useRoomRealtime({
     refreshQueue,
     refreshVotes,
     refreshEnergy,
+    handleCrowdReact,
   ]);
+
+  const broadcastCrowdReact = useCallback((payload: CrowdReactPayload) => {
+    channelRef.current?.send({
+      type: "broadcast",
+      event: "crowd_react",
+      payload,
+    });
+  }, []);
+
+  return { broadcastCrowdReact };
 }

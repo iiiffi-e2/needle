@@ -10,7 +10,7 @@ export interface ReactionBurst {
 
 interface QuickReactsProps {
   roomSlug: string;
-  onBurst: (glyph: string, color: string, count?: number) => void;
+  onReact: (glyph: string, color: string, type: string) => void;
 }
 
 const REACTS = [
@@ -20,9 +20,9 @@ const REACTS = [
   { glyph: "▲", color: "#ff8a3d", type: "fire" },
 ] as const;
 
-export function QuickReacts({ roomSlug, onBurst }: QuickReactsProps) {
+export function QuickReacts({ roomSlug, onReact }: QuickReactsProps) {
   const handleReact = async (glyph: string, color: string, type: string) => {
-    onBurst(glyph, color, type === "fire" ? 1 : 1);
+    onReact(glyph, color, type);
     fetch(`/api/rooms/${roomSlug}/react`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

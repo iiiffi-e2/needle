@@ -25,7 +25,40 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const pathname = request.nextUrl.pathname;
+  const isPublicAsset =
+    pathname.startsWith("/_next") ||
+    pathname.includes(".");
+  const isAuthFlow =
+    pathname.startsWith("/auth/") && pathname !== "/auth/onboarding";
+  const isApi = pathname.startsWith("/api/");
+
+  if (
+    user &&
+    !isPublicAsset &&
+    !isAuthFlow &&
+    !isApi &&
+    pathname !== "/auth/onboarding"
+  ) {
+    const { data: profile } = await supabase
+      .from("users")
+      .select("avatar_color")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile?.avatar_color) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/auth/onboarding";
+      if (pathname !== "/") {
+        url.searchParams.set("redirect", pathname + request.nextUrl.search);
+      }
+      return NextResponse.redirect(url);
+    }
+  }
 
   return supabaseResponse;
 }

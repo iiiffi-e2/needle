@@ -109,6 +109,8 @@ export function ChatPanel({
               <UserAvatar
                 name={msg.user?.display_name}
                 avatarUrl={msg.user?.avatar_url}
+                userId={msg.user_id}
+                avatarColor={msg.user?.avatar_color}
                 size="sm"
               />
               <div className="min-w-0">

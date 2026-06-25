@@ -25,6 +25,8 @@ export function ListenerList({ members, currentUserId }: ListenerListProps) {
             <UserAvatar
               name={member.user?.display_name}
               avatarUrl={member.user?.avatar_url}
+              userId={member.user_id}
+              avatarColor={member.user?.avatar_color}
               size="sm"
               isActive={member.user_id === currentUserId}
             />

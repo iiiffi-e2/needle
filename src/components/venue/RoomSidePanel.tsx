@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { ChatMessage, QueueItem, Room, RoomMember, User } from "@/lib/types";
-import { crowdColorForUser } from "@/lib/design-tokens";
+import { resolveUserColor } from "@/lib/design-tokens";
 import { formatDuration, timeAgo } from "@/lib/utils";
 import { SystemMessage } from "@/components/shared/SystemMessage";
 import { NeedlebotMessage } from "@/components/shared/NeedlebotMessage";
@@ -157,7 +157,7 @@ export function RoomSidePanel({
                 );
               }
               const color = m.user_id
-                ? crowdColorForUser(m.user_id)
+                ? resolveUserColor(m.user_id, m.user?.avatar_color)
                 : "#a98bff";
               return (
                 <div key={m.id} className="flex gap-2">
@@ -234,7 +234,7 @@ export function RoomSidePanel({
                   style={{
                     background: q.track?.thumbnail_url
                       ? `url(${q.track.thumbnail_url}) center/cover`
-                      : crowdColorForUser(q.dj_user_id),
+                      : resolveUserColor(q.dj_user_id, q.dj?.avatar_color),
                   }}
                 />
                 <div className="flex-1 min-w-0">
@@ -289,7 +289,12 @@ export function RoomSidePanel({
                 <span
                   key={m.id}
                   className="w-[30px] h-[30px] rounded-full shadow-[0_0_0_2px_var(--ndl-bg1)]"
-                  style={{ background: crowdColorForUser(m.user_id) }}
+                  style={{
+                    background: resolveUserColor(
+                      m.user_id,
+                      m.user?.avatar_color
+                    ),
+                  }}
                   title={m.user?.display_name || undefined}
                 />
               ))}

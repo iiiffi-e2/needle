@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useMemo } from "react";
+import { memo, useMemo, type ReactNode } from "react";
 import type { DjSlot, RoomMember, User } from "@/lib/types";
 import { VinylBlob } from "@/components/avatars/VinylBlob";
 import {
@@ -100,8 +100,32 @@ interface DeckSlotProps {
   userReactions: CrowdHeadReaction[];
   onJoin: () => void;
   onLeave: () => void;
+  onTapOwnBlob?: () => void;
   loading: boolean;
   canJoin: boolean;
+}
+
+function OwnDeckBlobTap({
+  enabled,
+  onTap,
+  children,
+}: {
+  enabled: boolean;
+  onTap?: () => void;
+  children: ReactNode;
+}) {
+  if (!enabled || !onTap) return <>{children}</>;
+
+  return (
+    <button
+      type="button"
+      onClick={onTap}
+      aria-label="Step off the deck"
+      className="relative border-none bg-transparent p-0 cursor-pointer rounded-full"
+    >
+      {children}
+    </button>
+  );
 }
 
 function DeckSlot({
@@ -111,6 +135,7 @@ function DeckSlot({
   userReactions,
   onJoin,
   onLeave,
+  onTapOwnBlob,
   loading,
   canJoin,
 }: DeckSlotProps) {
@@ -125,19 +150,24 @@ function DeckSlot({
       <div className="flex flex-col items-center pointer-events-auto">
         <div className="relative">
           <HeadReactionGlyphs reactions={userReactions} size={deckBlobSize} />
-          <VinylBlob
-            variant={isCurrentUser ? "you" : "crowd"}
-            color={resolveUserColor(
-              occupant.user_id,
-              occupant.user?.avatar_color
-            )}
-            size={deckBlobSize}
-            dance
-            showRing
-            initials={
-              isCurrentUser ? getInitials(occupant.user.display_name) : undefined
-            }
-          />
+          <OwnDeckBlobTap
+            enabled={isCurrentUser}
+            onTap={onTapOwnBlob}
+          >
+            <VinylBlob
+              variant={isCurrentUser ? "you" : "crowd"}
+              color={resolveUserColor(
+                occupant.user_id,
+                occupant.user?.avatar_color
+              )}
+              size={deckBlobSize}
+              dance
+              showRing
+              initials={
+                isCurrentUser ? getInitials(occupant.user.display_name) : undefined
+              }
+            />
+          </OwnDeckBlobTap>
         </div>
         <div className="mt-2 text-center">
           <BlobNameLabel
@@ -150,7 +180,7 @@ function DeckSlot({
               type="button"
               onClick={onLeave}
               disabled={loading}
-              className="mt-1 px-2.5 py-0.5 rounded-full border font-bold text-[9.5px] cursor-pointer disabled:opacity-50"
+              className="hidden lg:inline-block mt-1 px-2.5 py-0.5 rounded-full border font-bold text-[9.5px] cursor-pointer disabled:opacity-50"
               style={{
                 borderColor: "var(--line)",
                 background: "#ffffff10",
@@ -224,6 +254,7 @@ export interface VenueCanvasProps {
   canJoinDeck: boolean;
   onJoinDeck: () => void;
   onLeaveDeck: () => void;
+  onRequestLeaveDeck?: () => void;
   deckLoading: boolean;
 }
 
@@ -240,8 +271,10 @@ export function VenueCanvas({
   canJoinDeck,
   onJoinDeck,
   onLeaveDeck,
+  onRequestLeaveDeck,
   deckLoading,
 }: VenueCanvasProps) {
+  const requestStepOff = onRequestLeaveDeck;
   const glowOpacity = 0.32 + (energy / 100) * 0.6;
   const neonGlowOpacity = 0.25 + (energy / 100) * 0.55;
   const beamOpacity = 0.4 + (energy / 100) * 0.45;
@@ -488,6 +521,7 @@ export function VenueCanvas({
           }
           onJoin={onJoinDeck}
           onLeave={onLeaveDeck}
+          onTapOwnBlob={requestStepOff}
           loading={deckLoading}
           canJoin={canJoinDeck}
         />
@@ -518,7 +552,11 @@ export function VenueCanvas({
         {currentDj ? (
           <>
             <div
-              className="relative"
+              className={`relative ${
+                currentDj.id === currentUserId && requestStepOff
+                  ? "pointer-events-auto"
+                  : ""
+              }`}
               style={
                 isDjSleeping
                   ? undefined
@@ -542,16 +580,21 @@ export function VenueCanvas({
                 reactions={reactionsByUser.get(currentDj.id) ?? []}
                 size={66}
               />
-              <VinylBlob
-                variant="dj"
-                color={resolveUserColor(
-                  currentDj.id,
-                  currentDj.avatar_color
-                )}
-                size={66}
-                dance={!isDjSleeping}
-                showRing
-              />
+              <OwnDeckBlobTap
+                enabled={currentDj.id === currentUserId}
+                onTap={requestStepOff}
+              >
+                <VinylBlob
+                  variant="dj"
+                  color={resolveUserColor(
+                    currentDj.id,
+                    currentDj.avatar_color
+                  )}
+                  size={66}
+                  dance={!isDjSleeping}
+                  showRing
+                />
+              </OwnDeckBlobTap>
             </div>
             <div className="mt-2 text-center pointer-events-auto">
               <BlobNameLabel
@@ -583,7 +626,7 @@ export function VenueCanvas({
                   type="button"
                   onClick={onLeaveDeck}
                   disabled={deckLoading}
-                  className="mt-2 px-2.5 py-0.5 rounded-full border font-bold text-[9.5px] cursor-pointer disabled:opacity-50"
+                  className="hidden lg:inline-block mt-2 px-2.5 py-0.5 rounded-full border font-bold text-[9.5px] cursor-pointer disabled:opacity-50"
                   style={{
                     borderColor: "var(--line)",
                     background: "#ffffff10",
@@ -618,6 +661,7 @@ export function VenueCanvas({
           }
           onJoin={onJoinDeck}
           onLeave={onLeaveDeck}
+          onTapOwnBlob={requestStepOff}
           loading={deckLoading}
           canJoin={canJoinDeck}
         />

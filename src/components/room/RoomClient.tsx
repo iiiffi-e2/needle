@@ -14,6 +14,7 @@ import { DropTrackBar } from "@/components/venue/DropTrackBar";
 import { MobilePlayerStack } from "@/components/venue/MobilePlayerStack";
 import { MobileBottomNav } from "@/components/venue/MobileBottomNav";
 import { DropSheet } from "@/components/venue/DropSheet";
+import { StepOffConfirmSheet } from "@/components/venue/StepOffConfirmSheet";
 import { RoomSidePanel, type TabId } from "@/components/venue/RoomSidePanel";
 import { YouTubePlayer } from "@/components/room/YouTubePlayer";
 import { useRoomRealtime } from "@/hooks/useRoomRealtime";
@@ -77,6 +78,7 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
   const [sideTab, setSideTab] = useState<TabId>("chat");
   const [mobileDrawer, setMobileDrawer] = useState<TabId | null>(null);
   const [dropSheetOpen, setDropSheetOpen] = useState(false);
+  const [stepOffOpen, setStepOffOpen] = useState(false);
   const [deckLoading, setDeckLoading] = useState(false);
   const advancingQueueItemRef = useRef<string | null>(null);
   const advancedQueueItemsRef = useRef(new Set<string>());
@@ -395,6 +397,9 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
               canJoinDeck={!isUserDj && !isUserWaitlisted && !!currentUserId}
               onJoinDeck={handleJoinDeck}
               onLeaveDeck={handleLeaveDeck}
+              onRequestLeaveDeck={
+                isMobile && isUserDj ? () => setStepOffOpen(true) : undefined
+              }
               deckLoading={deckLoading}
             />
             <ReactionBursts bursts={bursts} />
@@ -470,6 +475,16 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
           setMobileDrawer("queue");
         }}
         onToast={showToast}
+      />
+
+      <StepOffConfirmSheet
+        open={stepOffOpen}
+        loading={deckLoading}
+        onConfirm={() => {
+          setStepOffOpen(false);
+          void handleLeaveDeck();
+        }}
+        onCancel={() => setStepOffOpen(false)}
       />
 
       {toast && (

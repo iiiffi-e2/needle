@@ -427,6 +427,21 @@ body {
   .needle-room.needle-drawer-active .needle-mobile-player-stack {
     z-index: 50;
   }
+
+  .needle-step-off-dialog {
+    position: fixed;
+    inset: 0;
+    z-index: 110;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    pointer-events: none;
+  }
+
+  .needle-step-off-dialog > * {
+    pointer-events: auto;
+  }
 }
 
 .venue-bg {

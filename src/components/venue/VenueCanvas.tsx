@@ -8,7 +8,7 @@ import {
   resolveUserColor,
 } from "@/lib/design-tokens";
 import type { CrowdHeadReaction } from "@/lib/crowd-reactions";
-import { getInitials } from "@/lib/utils";
+import { getInitials, truncateDisplayName } from "@/lib/utils";
 
 const CrowdMemberBlob = memo(function CrowdMemberBlob({
   color,
@@ -31,6 +31,28 @@ const CrowdMemberBlob = memo(function CrowdMemberBlob({
     />
   );
 });
+
+function BlobNameLabel({
+  name,
+  maxWidth = 72,
+  className = "text-[9px] text-[var(--ndl-txt)]",
+}: {
+  name: string;
+  maxWidth?: number;
+  className?: string;
+}) {
+  const truncated = truncateDisplayName(name);
+
+  return (
+    <span
+      className={`mt-1 block text-center font-bold leading-tight pointer-events-none ${className}`}
+      style={{ maxWidth }}
+      title={name !== truncated ? name : undefined}
+    >
+      {truncated}
+    </span>
+  );
+}
 
 function HeadReactionGlyphs({
   reactions,
@@ -118,9 +140,11 @@ function DeckSlot({
           />
         </div>
         <div className="mt-2 text-center">
-          <div className="font-extrabold text-xs">
-            {isCurrentUser ? "you" : occupant.user.display_name}
-          </div>
+          <BlobNameLabel
+            name={isCurrentUser ? "you" : occupant.user.display_name || "?"}
+            maxWidth={80}
+            className="text-xs text-[var(--txt)]"
+          />
           {isCurrentUser && (
             <button
               type="button"
@@ -530,12 +554,15 @@ export function VenueCanvas({
               />
             </div>
             <div className="mt-2 text-center pointer-events-auto">
-              <div
-                className="font-display font-extrabold"
-                style={{ fontSize: 13 }}
-              >
-                {currentDj.display_name}
-              </div>
+              <BlobNameLabel
+                name={
+                  currentDj.id === currentUserId
+                    ? "you"
+                    : currentDj.display_name || "?"
+                }
+                maxWidth={96}
+                className="text-[13px] font-display font-extrabold text-[var(--txt)]"
+              />
               <div
                 className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full font-extrabold tracking-[0.08em]"
                 style={{
@@ -674,30 +701,27 @@ export function VenueCanvas({
         return (
           <div
             key={member.id}
-            className="absolute group pointer-events-auto cursor-default hover:z-[30]"
+            className="absolute flex flex-col items-center pointer-events-auto cursor-default"
             style={{
               left: `${c.leftPct}%`,
               top: `${c.topPct}%`,
-              width: c.size,
               transform: "translateX(-50%)",
               zIndex: c.zIndex,
             }}
           >
-            <HeadReactionGlyphs reactions={userReactions} size={c.size} />
-            <div className="relative w-full">
+            <div className="relative" style={{ width: c.size }}>
+              <HeadReactionGlyphs reactions={userReactions} size={c.size} />
               <CrowdMemberBlob
                 color={resolveUserColor(c.userId, userColors.get(c.userId))}
                 size={c.size}
                 dance={c.dance}
                 animDuration={c.animDuration}
               />
-              <span
-                className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none z-10 border border-[var(--ndl-line)] bg-[var(--ndl-panel)] text-[var(--ndl-txt)] shadow-[0_4px_12px_#0006]"
-                aria-hidden
-              >
-                {displayName}
-              </span>
             </div>
+            <BlobNameLabel
+              name={displayName}
+              maxWidth={Math.max(56, c.size + 12)}
+            />
           </div>
         );
       })}

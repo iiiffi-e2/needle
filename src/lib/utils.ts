@@ -23,6 +23,15 @@ export function getInitials(name: string | null | undefined): string {
     .slice(0, 2);
 }
 
+export function truncateDisplayName(
+  name: string | null | undefined,
+  maxLength = 12
+): string {
+  const text = name?.trim() || "?";
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength - 1)}…`;
+}
+
 export function formatDuration(seconds: number | null | undefined): string {
   if (!seconds) return "0:00";
   const mins = Math.floor(seconds / 60);

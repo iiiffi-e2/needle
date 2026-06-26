@@ -11,6 +11,7 @@ interface YouTubePlayerProps {
   muted: boolean;
   onEnded: (sessionId: string) => void;
   onDurationReady?: (seconds: number) => void;
+  onAutoplayMuted?: (blocked: boolean) => void;
 }
 
 declare global {
@@ -39,6 +40,7 @@ interface YTPlayer {
   pauseVideo: () => void;
   mute: () => void;
   unMute: () => void;
+  isMuted: () => boolean;
   destroy: () => void;
   getCurrentTime: () => number;
   getDuration: () => number;
@@ -96,6 +98,7 @@ export function YouTubePlayer({
   muted,
   onEnded,
   onDurationReady,
+  onAutoplayMuted,
 }: YouTubePlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YTPlayer | null>(null);
@@ -103,15 +106,66 @@ export function YouTubePlayer({
   const activeSessionIdRef = useRef(sessionId);
   const readyRef = useRef(false);
   const switchingRef = useRef(false);
+  const gestureUnlockRef = useRef<(() => void) | null>(null);
   const onEndedRef = useRef(onEnded);
   const onDurationReadyRef = useRef(onDurationReady);
+  const onAutoplayMutedRef = useRef(onAutoplayMuted);
   const isPausedRef = useRef(isPaused);
   const mutedRef = useRef(muted);
   onEndedRef.current = onEnded;
   onDurationReadyRef.current = onDurationReady;
+  onAutoplayMutedRef.current = onAutoplayMuted;
   isPausedRef.current = isPaused;
   mutedRef.current = muted;
   activeSessionIdRef.current = sessionId;
+
+  const clearGestureUnlock = useCallback(() => {
+    if (gestureUnlockRef.current) {
+      document.removeEventListener("pointerdown", gestureUnlockRef.current, true);
+      gestureUnlockRef.current = null;
+    }
+  }, []);
+
+  const syncAutoplayMuteState = useCallback((player: YTPlayer) => {
+    if (mutedRef.current) {
+      onAutoplayMutedRef.current?.(false);
+      clearGestureUnlock();
+      return;
+    }
+
+    let blocked = false;
+    try {
+      blocked = player.isMuted();
+    } catch {
+      blocked = false;
+    }
+
+    onAutoplayMutedRef.current?.(blocked);
+
+    if (blocked && !gestureUnlockRef.current) {
+      const unlock = () => {
+        if (mutedRef.current) return;
+        try {
+          player.unMute();
+          if (!isPausedRef.current) {
+            player.playVideo();
+          }
+          if (!player.isMuted()) {
+            onAutoplayMutedRef.current?.(false);
+            clearGestureUnlock();
+          }
+        } catch {
+          // Player may not be ready yet.
+        }
+      };
+      gestureUnlockRef.current = unlock;
+      document.addEventListener("pointerdown", unlock, { capture: true });
+    }
+
+    if (!blocked) {
+      clearGestureUnlock();
+    }
+  }, [clearGestureUnlock]);
 
   const applyPlaybackState = useCallback((player: YTPlayer) => {
     if (mutedRef.current) {
@@ -124,7 +178,8 @@ export function YouTubePlayer({
     } else {
       player.playVideo();
     }
-  }, []);
+    syncAutoplayMuteState(player);
+  }, [syncAutoplayMuteState]);
 
   const notifyEnded = useCallback((endedSessionId: string) => {
     onEndedRef.current(endedSessionId);
@@ -192,6 +247,7 @@ export function YouTubePlayer({
       switchingRef.current = true;
       readyRef.current = false;
       loadedVideoIdRef.current = null;
+      clearGestureUnlock();
       playerRef.current?.destroy();
       playerRef.current = null;
     };
@@ -231,6 +287,15 @@ export function YouTubePlayer({
     if (!playerRef.current || !readyRef.current) return;
     applyPlaybackState(playerRef.current);
   }, [isPaused, muted, applyPlaybackState]);
+
+  useEffect(() => {
+    if (muted) return;
+    const player = playerRef.current;
+    if (!player || !readyRef.current) return;
+    syncAutoplayMuteState(player);
+  }, [muted, syncAutoplayMuteState]);
+
+  useEffect(() => () => clearGestureUnlock(), [clearGestureUnlock]);
 
   useEffect(() => {
     if (!startedAt || !durationSeconds || !sessionId) return;

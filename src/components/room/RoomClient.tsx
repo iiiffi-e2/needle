@@ -73,7 +73,16 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
   const [headReactions, setHeadReactions] = useState<CrowdHeadReaction[]>([]);
   const headReactionCounts = useRef<Map<string, number>>(new Map());
   const [toast, setToast] = useState<string | null>(null);
-  const [isMuted, setIsMuted] = useState(false);
+  const muteStorageKey = `needle-muted-${room.slug}`;
+  const [isMuted, setIsMuted] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return sessionStorage.getItem(muteStorageKey) === "true";
+    } catch {
+      return false;
+    }
+  });
+  const [autoplayBlocked, setAutoplayBlocked] = useState(false);
   const [playerDuration, setPlayerDuration] = useState<number | null>(null);
   const [sideTab, setSideTab] = useState<TabId>("chat");
   const [mobileDrawer, setMobileDrawer] = useState<TabId | null>(null);
@@ -174,6 +183,21 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
     setToast(msg);
     setTimeout(() => setToast(null), 2300);
   }, []);
+
+  const handleToggleMute = useCallback(() => {
+    if (autoplayBlocked && !isMuted) {
+      return;
+    }
+    setIsMuted((m) => {
+      const next = !m;
+      try {
+        sessionStorage.setItem(muteStorageKey, String(next));
+      } catch {
+        // sessionStorage may be unavailable in private mode.
+      }
+      return next;
+    });
+  }, [autoplayBlocked, isMuted, muteStorageKey]);
 
   const fling = useCallback((glyph: string, color: string) => {
     const id = Math.random().toString(36).slice(2);
@@ -413,7 +437,8 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
               userSaved={userSaved}
               durationSeconds={effectiveDuration}
               isMuted={isMuted}
-              onToggleMute={() => setIsMuted((m) => !m)}
+              autoplayBlocked={autoplayBlocked}
+              onToggleMute={handleToggleMute}
               onVote={handleVote}
               onSave={handleSave}
             />
@@ -453,6 +478,9 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
         myVote={myVote}
         userSaved={userSaved}
         durationSeconds={effectiveDuration}
+        isMuted={isMuted}
+        autoplayBlocked={autoplayBlocked}
+        onToggleMute={handleToggleMute}
         onReact={handleQuickReact}
         onVote={handleVote}
         onSave={handleSave}
@@ -510,6 +538,7 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
           durationSeconds={effectiveDuration || track.duration_seconds}
           isPaused={playback.is_paused}
           muted={isMuted}
+          onAutoplayMuted={setAutoplayBlocked}
           onEnded={handleTrackEnded}
           onDurationReady={handleDurationReady}
         />

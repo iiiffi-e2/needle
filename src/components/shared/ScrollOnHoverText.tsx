@@ -7,7 +7,7 @@ interface ScrollOnHoverTextProps {
   className?: string;
 }
 
-const SCROLL_SPEED_PX_PER_SEC = 35;
+const SCROLL_SPEED_PX_PER_SEC = 40;
 const SCROLL_START_DELAY_MS = 400;
 const SCROLL_BACK_DURATION_MS = 600;
 
@@ -18,6 +18,7 @@ export function ScrollOnHoverText({ text, className = "" }: ScrollOnHoverTextPro
   const [hovered, setHovered] = useState(false);
 
   const overflows = overflowPx > 1;
+  const scrollDurationSec = overflowPx / SCROLL_SPEED_PX_PER_SEC;
 
   const recompute = useCallback(() => {
     const container = containerRef.current;
@@ -32,8 +33,6 @@ export function ScrollOnHoverText({ text, className = "" }: ScrollOnHoverTextPro
     if (containerRef.current) observer.observe(containerRef.current);
     return () => observer.disconnect();
   }, [recompute]);
-
-  const scrollDurationSec = Math.max(1.5, overflowPx / SCROLL_SPEED_PX_PER_SEC);
 
   return (
     <div
@@ -56,10 +55,11 @@ export function ScrollOnHoverText({ text, className = "" }: ScrollOnHoverTextPro
         style={
           hovered && overflows
             ? {
-                transform: `translateX(-${overflowPx}px)`,
-                transition: `transform ${scrollDurationSec}s linear ${SCROLL_START_DELAY_MS}ms`,
+                ["--scroll-distance" as string]: `-${overflowPx}px`,
+                animation: `ndl-title-scroll ${scrollDurationSec}s linear ${SCROLL_START_DELAY_MS}ms forwards`,
               }
             : {
+                animation: "none",
                 transform: "translateX(0)",
                 transition: `transform ${SCROLL_BACK_DURATION_MS}ms ease-out`,
               }

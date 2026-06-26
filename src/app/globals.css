@@ -136,6 +136,7 @@ body {
 .animate-ndl-bob { animation: ndl-bob 3s ease-in-out infinite; }
 .animate-ndl-wobble { animation: ndl-wobble 1.6s ease-in-out infinite; }
 .animate-ndl-glow { animation: ndl-glow 1.6s ease-in-out infinite; }
+.animate-ndl-marquee { animation: ndl-marquee linear infinite; }
 .animate-ndl-livedot { animation: ndl-livedot 1.6s ease-in-out infinite; }
 .animate-ndl-toast { animation: ndl-toast 2.4s ease forwards; }
 .animate-ndl-pop { animation: ndl-pop 0.4s ease; }

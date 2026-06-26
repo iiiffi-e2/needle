@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { RoomPlayback, Track, User } from "@/lib/types";
 import { formatDuration } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { MarqueeText } from "@/components/shared/MarqueeText";
 
 interface MobileNowPlayingBarProps {
   playback: RoomPlayback | null;
@@ -105,9 +106,10 @@ export function MobileNowPlayingBar({
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="font-display font-bold text-[13px] leading-tight truncate">
-            {track.title}
-          </div>
+          <MarqueeText
+            text={track.title}
+            className="font-display font-bold text-[13px] leading-tight"
+          />
           <div
             className="text-[11px] truncate tabular-nums"
             style={{ color: "var(--sub)" }}

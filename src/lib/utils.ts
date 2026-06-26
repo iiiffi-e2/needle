@@ -46,3 +46,18 @@ export function timeAgo(date: string): string {
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
   return `${Math.floor(seconds / 86400)}d ago`;
 }
+
+export function getAppUrl(): string {
+  if (typeof window !== "undefined") {
+    return window.location.origin;
+  }
+  return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+}
+
+export function getAuthCallbackUrl(next = "/"): string {
+  const url = new URL("/auth/callback", getAppUrl());
+  if (next !== "/") {
+    url.searchParams.set("next", next);
+  }
+  return url.toString();
+}

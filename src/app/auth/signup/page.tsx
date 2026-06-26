@@ -2,6 +2,7 @@
 
 import { useState, Suspense } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { getAuthCallbackUrl } from "@/lib/utils";
 import Link from "next/link";
 import { NeedleLogo } from "@/components/shared/NeedleLogo";
 
@@ -24,6 +25,7 @@ function SignupForm() {
       password,
       options: {
         data: { display_name: displayName || email.split("@")[0] },
+        emailRedirectTo: getAuthCallbackUrl(),
       },
     });
 

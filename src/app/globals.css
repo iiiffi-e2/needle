@@ -377,7 +377,14 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 10px;
+    gap: 14px;
+    width: 100%;
+  }
+
+  .needle-mobile-react-btn {
+    width: min(72px, calc((100vw - 20px - 42px) / 4));
+    height: min(72px, calc((100vw - 20px - 42px) / 4));
+    font-size: clamp(1.35rem, 5.5vw, 1.875rem);
   }
 
   .needle-mobile-now-playing-inner {
@@ -421,7 +428,7 @@ body {
   }
 
   .needle-mobile-toast {
-    bottom: calc(180px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(216px + env(safe-area-inset-bottom, 0px));
   }
 
   .needle-room.needle-drawer-active .needle-mobile-player-stack {

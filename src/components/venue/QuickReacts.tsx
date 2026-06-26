@@ -55,7 +55,7 @@ export function QuickReacts({
             type="button"
             title="React"
             onClick={() => handleReact(q.glyph, q.color, q.type)}
-            className={`${reactButtonClass} w-9 h-9 text-base`}
+            className={`${reactButtonClass} needle-mobile-react-btn`}
             style={reactButtonStyle(q.color)}
           >
             {q.glyph}

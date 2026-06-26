@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { TrackSearchInput } from "@/components/shared/TrackSearchInput";
 
 interface DropSheetProps {
   open: boolean;
@@ -20,23 +21,9 @@ export function DropSheet({
   onOpenQueue,
   onToast,
 }: DropSheetProps) {
-  const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (open) {
-      setUrl("");
-      requestAnimationFrame(() => inputRef.current?.focus());
-    }
-  }, [open]);
-
-  const submitDrop = async () => {
-    const trimmed = url.trim();
-    if (!trimmed) {
-      onToast("Paste a link first");
-      return;
-    }
+  const submitUrl = async (url: string) => {
     if (!isDj) {
       onToast("Join a deck to drop tracks");
       return;
@@ -46,14 +33,13 @@ export function DropSheet({
       const res = await fetch(`/api/rooms/${roomSlug}/track`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: trimmed }),
+        body: JSON.stringify({ url }),
       });
       const data = await res.json();
       if (!res.ok) {
         onToast(data.error || "Failed to drop track");
         return;
       }
-      setUrl("");
       onToast("Added to the queue");
       onOpenQueue();
       onClose();
@@ -87,7 +73,7 @@ export function DropSheet({
           </h2>
           <p className="text-[12px] mb-4" style={{ color: "var(--sub)" }}>
             {isDj
-              ? "Paste a YouTube link — it goes straight to the queue."
+              ? "Search for a track or paste a YouTube link — it goes straight to the queue."
               : "Join a deck on stage to drop tracks."}
           </p>
           <div
@@ -102,32 +88,12 @@ export function DropSheet({
             <span className="text-base text-[#cc0000] font-extrabold shrink-0">
               ▸
             </span>
-            <input
-              ref={inputRef}
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && submitDrop()}
-              placeholder="Paste a YouTube link…"
-              disabled={!isDj}
-              className="flex-1 min-w-0 bg-transparent border-none outline-none disabled:opacity-50"
-              style={{ color: "var(--txt)", fontSize: 13 }}
+            <TrackSearchInput
+              autoFocus
+              disabled={loading || !isDj}
+              onSelect={(_videoId, url) => void submitUrl(url)}
             />
           </div>
-          <button
-            type="button"
-            onClick={submitDrop}
-            disabled={loading || !isDj}
-            className="w-full font-display font-extrabold text-sm cursor-pointer border-none disabled:opacity-50"
-            style={{
-              padding: "13px 22px",
-              borderRadius: 12,
-              color: "#1a0d06",
-              background: "linear-gradient(120deg, var(--glow2), var(--glow))",
-              boxShadow: "0 6px 22px rgba(255, 157, 60, 0.55)",
-            }}
-          >
-            {loading ? "…" : "Drop the Needle"}
-          </button>
         </div>
       </div>
     </>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { TrackSearchInput } from "@/components/shared/TrackSearchInput";
 
 interface DropTrackBarProps {
   roomSlug: string;
@@ -17,15 +18,9 @@ export function DropTrackBar({
   onOpenQueue,
   onToast,
 }: DropTrackBarProps) {
-  const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const submitDrop = async () => {
-    const trimmed = url.trim();
-    if (!trimmed) {
-      onToast("Paste a link first");
-      return;
-    }
+  const submitUrl = async (url: string) => {
     if (!isDj) {
       onToast("Join a deck to drop tracks");
       return;
@@ -35,14 +30,13 @@ export function DropTrackBar({
       const res = await fetch(`/api/rooms/${roomSlug}/track`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: trimmed }),
+        body: JSON.stringify({ url }),
       });
       const data = await res.json();
       if (!res.ok) {
         onToast(data.error || "Failed to drop track");
         return;
       }
-      setUrl("");
       onToast("Added to the queue");
       onOpenQueue();
     } finally {
@@ -93,13 +87,9 @@ export function DropTrackBar({
         }}
       >
         <span className="text-base text-[#cc0000] font-extrabold shrink-0">▸</span>
-        <input
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && submitDrop()}
-          placeholder="Paste a YouTube link to drop a track…"
-          className="flex-1 min-w-0 bg-transparent border-none outline-none"
-          style={{ color: "var(--txt)", fontSize: 13 }}
+        <TrackSearchInput
+          disabled={loading}
+          onSelect={(_videoId, url) => void submitUrl(url)}
         />
         <span
           className="text-[11px] shrink-0 hidden sm:inline"
@@ -113,25 +103,6 @@ export function DropTrackBar({
           ⏎
         </span>
       </div>
-
-      <button
-        type="button"
-        onClick={submitDrop}
-        disabled={loading}
-        className="font-display font-extrabold text-sm cursor-pointer border-none shrink-0 disabled:opacity-50"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 9,
-          padding: "12px 22px",
-          borderRadius: 12,
-          color: "#1a0d06",
-          background: "linear-gradient(120deg, var(--glow2), var(--glow))",
-          boxShadow: "0 6px 22px rgba(255, 157, 60, 0.55)",
-        }}
-      >
-        {loading ? "…" : "Drop the Needle"}
-      </button>
     </div>
   );
 }

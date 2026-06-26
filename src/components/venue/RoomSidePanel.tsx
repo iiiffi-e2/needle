@@ -4,7 +4,8 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import type { ChatMessage, QueueItem, Room, RoomMember, User } from "@/lib/types";
 import { resolveUserColor } from "@/lib/design-tokens";
 import { getQueuePlaybackOrder } from "@/lib/queue-order";
-import { formatDuration, timeAgo } from "@/lib/utils";
+import { timeAgo } from "@/lib/utils";
+import { ScrollOnHoverText } from "@/components/shared/ScrollOnHoverText";
 import { SystemMessage } from "@/components/shared/SystemMessage";
 import { NeedlebotMessage } from "@/components/shared/NeedlebotMessage";
 
@@ -247,16 +248,14 @@ export function RoomSidePanel({
                   }}
                 />
                 <div className="flex-1 min-w-0">
-                  <div className="text-[13px] font-bold truncate">
-                    {q.track?.title || "Unknown"}
-                  </div>
+                  <ScrollOnHoverText
+                    text={q.track?.title || "Unknown"}
+                    className="text-[13px] font-bold"
+                  />
                   <div className="text-[11px] text-muted">
                     added by {q.dj?.display_name || "DJ"}
                   </div>
                 </div>
-                <span className="text-[11px] text-muted tabular-nums">
-                  {formatDuration(q.track?.duration_seconds)}
-                </span>
               </div>
             ))
           )}

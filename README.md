@@ -26,7 +26,20 @@ npm install
 3. Run `supabase/seed.sql` to seed badges
 4. Enable Realtime for: `chat_messages`, `room_members`, `room_playback`, `track_votes`, `dj_slots`, `dj_waitlist`, `queue_items`
 
-### 3. Configure environment
+### 3. YouTube Data API (track search)
+
+1. Create a project in [Google Cloud Console](https://console.cloud.google.com/)
+2. Enable **YouTube Data API v3**
+3. Create an API key (restrict to YouTube Data API v3 if desired)
+4. Add to `.env.local`:
+
+```
+YOUTUBE_API_KEY=your-api-key
+```
+
+Search is optional — without a key, DJs can still paste YouTube links.
+
+### 4. Configure environment
 
 Copy `.env.example` to `.env.local`:
 
@@ -36,7 +49,7 @@ cp .env.example .env.local
 
 Fill in your Supabase URL, anon key, and service role key. Optionally add `OPENAI_API_KEY` for Needlebot.
 
-### 4. Run locally
+### 5. Run locally
 
 ```bash
 npm run dev
@@ -44,7 +57,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-### 5. Seed example rooms
+### 6. Seed example rooms
 
 1. Sign up for an account
 2. On the home page, click **Seed Example Rooms** (or `PUT /api/rooms`)

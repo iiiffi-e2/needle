@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
-import { parseYouTubeUrl, fetchYouTubeMetadata } from "@/lib/youtube";
+import { parseYouTubeUrl } from "@/lib/youtube";
+import { findOrCreateYouTubeTrack } from "@/lib/find-or-create-youtube-track";
 import { postSystemMessage } from "@/lib/playback";
 import { bumpRoomEnergy, ENERGY_BUMP } from "@/lib/room-energy";
 
@@ -69,26 +70,17 @@ export async function POST(
       );
     }
 
-    const metadata = await fetchYouTubeMetadata(videoId);
-
-    const { data: created, error: trackError } = await admin
-      .from("tracks")
-      .insert({
-        provider: "youtube",
-        provider_id: videoId,
-        url: `https://www.youtube.com/watch?v=${videoId}`,
-        title: metadata.title,
-        thumbnail_url: metadata.thumbnail_url,
-        duration_seconds: metadata.duration_seconds,
-        submitted_by: user.id,
-      })
-      .select()
-      .single();
-
-    if (trackError) {
-      return NextResponse.json({ error: trackError.message }, { status: 500 });
+    try {
+      track = await findOrCreateYouTubeTrack(admin, videoId, user.id);
+    } catch (err) {
+      return NextResponse.json(
+        {
+          error:
+            err instanceof Error ? err.message : "Failed to create track",
+        },
+        { status: 500 }
+      );
     }
-    track = created;
   } else {
     return NextResponse.json(
       { error: "Provide a YouTube URL or track ID" },

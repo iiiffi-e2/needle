@@ -745,7 +745,7 @@ export function VenueCanvas({
         return (
           <div
             key={member.id}
-            className="absolute flex flex-col items-center pointer-events-auto cursor-default"
+            className="needle-crowd-member absolute flex flex-col items-center pointer-events-auto cursor-default"
             style={{
               left: `${c.leftPct}%`,
               top: `${c.topPct}%`,

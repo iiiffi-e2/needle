@@ -535,6 +535,7 @@ export function RoomSidePanel({
                 }}
               >
                 <TrackSearchInput
+                  placement="below"
                   showSaveAction
                   isDj={isUserDj}
                   disabled={!currentUserId}

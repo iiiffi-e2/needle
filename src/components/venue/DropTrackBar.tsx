@@ -50,7 +50,7 @@ export function DropTrackBar({
 
   return (
     <div
-      className="relative z-40 shrink-0 hidden lg:flex items-center gap-3 px-[22px]"
+      className="relative z-[200] shrink-0 hidden lg:flex items-center gap-3 px-[22px] overflow-visible"
       style={{
         height: 80,
         borderTop: "1px solid var(--line)",
@@ -81,7 +81,7 @@ export function DropTrackBar({
       </button>
 
       <div
-        className="flex-1 flex items-center gap-2.5 min-w-0 px-3.5"
+        className="relative flex-1 flex items-center gap-2.5 min-w-0 px-3.5 overflow-visible"
         style={{
           height: 46,
           borderRadius: 12,

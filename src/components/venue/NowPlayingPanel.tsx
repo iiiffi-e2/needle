@@ -97,7 +97,7 @@ export function NowPlayingPanel({
 
   return (
     <div
-      className="absolute z-30 rounded-2xl p-3.5 pointer-events-auto glass-panel hidden lg:block"
+      className="needle-now-playing-panel absolute z-30 rounded-2xl p-3.5 pointer-events-auto glass-panel hidden lg:block"
       style={{
         bottom: 18,
         left: 22,

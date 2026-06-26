@@ -11,6 +11,7 @@ export interface ReactionBurst {
 interface QuickReactsProps {
   roomSlug: string;
   onReact: (glyph: string, color: string, type: string) => void;
+  layout?: "rail" | "inline";
 }
 
 const REACTS = [
@@ -20,7 +21,22 @@ const REACTS = [
   { glyph: "▲", color: "#ff8a3d", type: "fire" },
 ] as const;
 
-export function QuickReacts({ roomSlug, onReact }: QuickReactsProps) {
+const reactButtonClass =
+  "rounded-full border flex items-center justify-center cursor-pointer shrink-0";
+
+const reactButtonStyle = (color: string) => ({
+  borderColor: "var(--line)",
+  background: "rgba(34, 21, 13, 0.7)",
+  backdropFilter: "blur(8px)",
+  color,
+  boxShadow: "0 6px 16px rgba(0,0,0,0.5)",
+});
+
+export function QuickReacts({
+  roomSlug,
+  onReact,
+  layout = "rail",
+}: QuickReactsProps) {
   const handleReact = async (glyph: string, color: string, type: string) => {
     onReact(glyph, color, type);
     fetch(`/api/rooms/${roomSlug}/react`, {
@@ -29,6 +45,25 @@ export function QuickReacts({ roomSlug, onReact }: QuickReactsProps) {
       body: JSON.stringify({ type }),
     }).catch(() => {});
   };
+
+  if (layout === "inline") {
+    return (
+      <div className="needle-mobile-reacts pointer-events-auto">
+        {REACTS.map((q) => (
+          <button
+            key={q.type}
+            type="button"
+            title="React"
+            onClick={() => handleReact(q.glyph, q.color, q.type)}
+            className={`${reactButtonClass} w-9 h-9 text-base`}
+            style={reactButtonStyle(q.color)}
+          >
+            {q.glyph}
+          </button>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -41,14 +76,8 @@ export function QuickReacts({ roomSlug, onReact }: QuickReactsProps) {
           type="button"
           title="React"
           onClick={() => handleReact(q.glyph, q.color, q.type)}
-          className="w-[42px] h-[42px] rounded-full border flex items-center justify-center text-lg cursor-pointer"
-          style={{
-            borderColor: "var(--line)",
-            background: "rgba(34, 21, 13, 0.7)",
-            backdropFilter: "blur(8px)",
-            color: q.color,
-            boxShadow: "0 6px 16px rgba(0,0,0,0.5)",
-          }}
+          className={`${reactButtonClass} w-[42px] h-[42px] text-lg`}
+          style={reactButtonStyle(q.color)}
         >
           {q.glyph}
         </button>

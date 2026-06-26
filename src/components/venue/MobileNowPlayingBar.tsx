@@ -83,7 +83,7 @@ export function MobileNowPlayingBar({
 
   return (
     <div
-      className="needle-mobile-now-playing lg:hidden glass-panel pointer-events-auto"
+      className="needle-mobile-now-playing-inner glass-panel pointer-events-auto"
       role="region"
       aria-label="Now playing"
     >

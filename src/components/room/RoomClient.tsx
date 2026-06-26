@@ -11,7 +11,7 @@ import {
   type ReactionBurst,
 } from "@/components/venue/QuickReacts";
 import { DropTrackBar } from "@/components/venue/DropTrackBar";
-import { MobileNowPlayingBar } from "@/components/venue/MobileNowPlayingBar";
+import { MobilePlayerStack } from "@/components/venue/MobilePlayerStack";
 import { MobileBottomNav } from "@/components/venue/MobileBottomNav";
 import { DropSheet } from "@/components/venue/DropSheet";
 import { RoomSidePanel, type TabId } from "@/components/venue/RoomSidePanel";
@@ -412,16 +412,6 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
               onVote={handleVote}
               onSave={handleSave}
             />
-            <MobileNowPlayingBar
-              playback={playback}
-              track={track}
-              dj={dj}
-              myVote={myVote}
-              userSaved={userSaved}
-              durationSeconds={effectiveDuration}
-              onVote={handleVote}
-              onSave={handleSave}
-            />
           </div>
           <DropTrackBar
             roomSlug={room.slug}
@@ -449,6 +439,19 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
           onCloseDrawer={closeMobileDrawer}
         />
       </div>
+
+      <MobilePlayerStack
+        roomSlug={room.slug}
+        playback={playback}
+        track={track}
+        dj={dj}
+        myVote={myVote}
+        userSaved={userSaved}
+        durationSeconds={effectiveDuration}
+        onReact={handleQuickReact}
+        onVote={handleVote}
+        onSave={handleSave}
+      />
 
       <MobileBottomNav
         activeDrawer={mobileDrawer}

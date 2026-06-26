@@ -3,7 +3,6 @@
 import { useState, Suspense } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { NeedleLogo } from "@/components/shared/NeedleLogo";
 
 function SignupForm() {
@@ -13,7 +12,6 @@ function SignupForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const router = useRouter();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,17 +34,25 @@ function SignupForm() {
     }
 
     setSuccess(true);
-    setTimeout(() => {
-      router.push("/");
-      router.refresh();
-    }, 1500);
+    setLoading(false);
   };
 
   if (success) {
     return (
-      <div className="text-center py-8">
-        <p className="text-success text-lg mb-2">You&apos;re in.</p>
-        <p className="text-sm text-muted">Redirecting to the rooms...</p>
+      <div className="text-center py-4">
+        <p className="text-success text-lg mb-2">Account created.</p>
+        <p className="text-sm text-muted mb-1">
+          We sent a confirmation link to <span className="text-foreground">{email}</span>.
+        </p>
+        <p className="text-sm text-muted">
+          Check your email and click the link to confirm your address before signing in.
+        </p>
+        <Link
+          href="/auth/login"
+          className="inline-block mt-6 text-sm text-glow-soft font-bold hover:underline"
+        >
+          Go to Sign In
+        </Link>
       </div>
     );
   }

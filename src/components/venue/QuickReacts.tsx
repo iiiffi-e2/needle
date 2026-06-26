@@ -32,7 +32,7 @@ export function QuickReacts({ roomSlug, onReact }: QuickReactsProps) {
 
   return (
     <div
-      className="absolute z-30 flex flex-col pointer-events-auto"
+      className="absolute z-30 hidden lg:flex flex-col pointer-events-auto"
       style={{ right: 18, bottom: 150, gap: 9 }}
     >
       {REACTS.map((q) => (

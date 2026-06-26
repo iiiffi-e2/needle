@@ -33,23 +33,23 @@ export function RoomTopBar({
       <Link href="/" className="flex items-center gap-[11px] shrink-0">
         <NeedleLogo size={34} />
         <span
-          className="font-display font-extrabold tracking-tight"
+          className="font-display font-extrabold tracking-tight hidden lg:inline"
           style={{ fontSize: 21, letterSpacing: "-0.02em" }}
         >
           Needle
         </span>
       </Link>
 
-      <div className="w-px h-[26px] shrink-0" style={{ background: "var(--line)" }} />
+      <div className="hidden lg:block w-px h-[26px] shrink-0" style={{ background: "var(--line)" }} />
 
-      <div className="flex flex-col gap-px min-w-0 shrink-0">
-        <div className="flex items-center gap-2 whitespace-nowrap">
+      <div className="flex flex-col gap-px min-w-0 flex-1 lg:flex-none lg:shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
           <span className="font-bold truncate" style={{ fontSize: 15 }}>
             {room.name}
           </span>
           {!room.is_private && (
             <span
-              className="font-bold tracking-wider px-[7px] py-0.5 rounded-full shrink-0"
+              className="font-bold tracking-wider px-[7px] py-0.5 rounded-full shrink-0 hidden sm:inline"
               style={{
                 fontSize: 10,
                 letterSpacing: "0.08em",
@@ -63,7 +63,7 @@ export function RoomTopBar({
           )}
         </div>
         <div
-          className="flex items-center gap-1.5"
+          className="hidden lg:flex items-center gap-1.5"
           style={{ fontSize: 11.5, color: "var(--sub)" }}
         >
           <span
@@ -82,9 +82,24 @@ export function RoomTopBar({
         </div>
       </div>
 
-      <div className="flex-1" />
+      <div className="hidden lg:block flex-1" />
 
-      <EnergyMeter energy={energy} />
+      <div className="flex items-center gap-2 shrink-0 lg:hidden">
+        <span
+          className="w-[7px] h-[7px] rounded-full shrink-0 animate-ndl-livedot"
+          style={{
+            background: "#36e07f",
+            boxShadow: "0 0 8px #36e07f",
+          }}
+        />
+        <span className="font-bold tabular-nums" style={{ fontSize: 14 }}>
+          {listenerCount}
+        </span>
+      </div>
+
+      <div className="hidden lg:block">
+        <EnergyMeter energy={energy} />
+      </div>
 
       {currentUser && (
         <Link

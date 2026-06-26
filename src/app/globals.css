@@ -169,6 +169,7 @@ body {
   flex-direction: column;
   height: 100dvh;
   overflow: hidden;
+  overflow-x: hidden;
   user-select: none;
 }
 
@@ -218,11 +219,169 @@ body {
   .needle-room-body {
     flex-direction: column;
   }
+
+  .needle-venue-column {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .needle-venue-scene {
+    flex: 1;
+  }
+
   .needle-sidebar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px));
     width: 100%;
+    max-height: min(58vh, calc(100dvh - 180px));
     border-left: none;
     border-top: 1px solid var(--line);
-    max-height: 42vh;
+    border-radius: 18px 18px 0 0;
+    transform: translateY(calc(100% + 12px));
+    transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+    z-index: 70;
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.55);
+  }
+
+  .needle-sidebar-drawer-open {
+    transform: translateY(0);
+  }
+
+  .needle-sidebar:not(.needle-sidebar-drawer-open) {
+    pointer-events: none;
+  }
+
+  .needle-topbar {
+    height: 52px !important;
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+    gap: 10px !important;
+  }
+
+  .needle-mobile-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 65;
+    border: none;
+    cursor: pointer;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(2px);
+  }
+
+  .needle-mobile-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 60;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1.15fr 1fr 1fr;
+    align-items: end;
+    gap: 0;
+    height: calc(64px + env(safe-area-inset-bottom, 0px));
+    padding: 0 6px env(safe-area-inset-bottom, 0px);
+    border-top: 1px solid var(--line);
+    background: linear-gradient(
+      180deg,
+      rgba(12, 7, 4, 0.94),
+      rgba(6, 4, 2, 0.98)
+    );
+  }
+
+  .needle-mobile-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 6px 0 8px;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--sub);
+    min-width: 0;
+  }
+
+  .needle-mobile-nav-item-active {
+    color: var(--glow2);
+  }
+
+  .needle-mobile-nav-fab-slot {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 10px;
+  }
+
+  .needle-mobile-nav-fab {
+    width: 58px;
+    height: 58px;
+    border-radius: 999px;
+    border: none;
+    cursor: pointer;
+    font-family: var(--font-display), system-ui, sans-serif;
+    font-weight: 800;
+    font-size: 13px;
+    letter-spacing: -0.02em;
+    color: #1a0d06;
+    background: linear-gradient(145deg, var(--glow2), var(--glow));
+    box-shadow:
+      0 0 0 3px rgba(255, 157, 60, 0.25),
+      0 8px 28px rgba(255, 157, 60, 0.55);
+    transform: translateY(-10px);
+  }
+
+  .needle-mobile-now-playing {
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    bottom: calc(64px + 10px + env(safe-area-inset-bottom, 0px));
+    z-index: 55;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 14px;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .needle-mobile-sheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    z-index: 75;
+    border-radius: 18px 18px 0 0;
+    border-top: 1px solid var(--line);
+    background: linear-gradient(
+      180deg,
+      rgba(28, 18, 11, 0.98),
+      rgba(12, 7, 4, 0.99)
+    );
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.55);
+    transform: translateY(calc(100% + 12px));
+    transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .needle-mobile-sheet-open {
+    transform: translateY(0);
+  }
+
+  .needle-mobile-sheet-handle {
+    width: 36px;
+    height: 4px;
+    border-radius: 999px;
+    margin: 10px auto 6px;
+    background: rgba(255, 200, 150, 0.25);
+  }
+
+  .needle-mobile-toast {
+    bottom: calc(132px + env(safe-area-inset-bottom, 0px));
   }
 }
 

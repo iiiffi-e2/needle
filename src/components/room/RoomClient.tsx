@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { RoomTopBar } from "@/components/venue/RoomTopBar";
 import { VenueCanvas } from "@/components/venue/VenueCanvas";
 import { NowPlayingPanel } from "@/components/venue/NowPlayingPanel";
@@ -10,6 +11,9 @@ import {
   type ReactionBurst,
 } from "@/components/venue/QuickReacts";
 import { DropTrackBar } from "@/components/venue/DropTrackBar";
+import { MobileNowPlayingBar } from "@/components/venue/MobileNowPlayingBar";
+import { MobileBottomNav } from "@/components/venue/MobileBottomNav";
+import { DropSheet } from "@/components/venue/DropSheet";
 import { RoomSidePanel, type TabId } from "@/components/venue/RoomSidePanel";
 import { YouTubePlayer } from "@/components/room/YouTubePlayer";
 import { useRoomRealtime } from "@/hooks/useRoomRealtime";
@@ -71,6 +75,8 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
   const [isMuted, setIsMuted] = useState(false);
   const [playerDuration, setPlayerDuration] = useState<number | null>(null);
   const [sideTab, setSideTab] = useState<TabId>("chat");
+  const [mobileDrawer, setMobileDrawer] = useState<TabId | null>(null);
+  const [dropSheetOpen, setDropSheetOpen] = useState(false);
   const [deckLoading, setDeckLoading] = useState(false);
   const advancingQueueItemRef = useRef<string | null>(null);
   const advancedQueueItemsRef = useRef(new Set<string>());
@@ -335,6 +341,23 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
 
   const isDjSleeping = !!dj && !track;
 
+  const isMobile = useMediaQuery("(max-width: 1023px)");
+
+  const handleMobileDrawer = useCallback((tab: TabId) => {
+    setDropSheetOpen(false);
+    setSideTab(tab);
+    setMobileDrawer((prev) => (prev === tab ? null : tab));
+  }, []);
+
+  const handleDropOpen = useCallback(() => {
+    setMobileDrawer(null);
+    setDropSheetOpen(true);
+  }, []);
+
+  const closeMobileDrawer = useCallback(() => {
+    setMobileDrawer(null);
+  }, []);
+
   const marquee = track
     ? `NOW SPINNING · ${track.title}${track.artist ? ` — ${track.artist}` : ""} · played by ${dj?.display_name || "DJ"} · `
     : isDjSleeping
@@ -383,6 +406,16 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
               onVote={handleVote}
               onSave={handleSave}
             />
+            <MobileNowPlayingBar
+              playback={playback}
+              track={track}
+              dj={dj}
+              myVote={myVote}
+              userSaved={userSaved}
+              durationSeconds={effectiveDuration}
+              onVote={handleVote}
+              onSave={handleSave}
+            />
           </div>
           <DropTrackBar
             roomSlug={room.slug}
@@ -405,14 +438,36 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
           currentDjUserId={currentDjId}
           activeTab={sideTab}
           onTabChange={setSideTab}
+          hideTabBar={isMobile}
+          mobileDrawerOpen={isMobile && mobileDrawer !== null}
+          onCloseDrawer={closeMobileDrawer}
         />
       </div>
 
+      <MobileBottomNav
+        activeDrawer={mobileDrawer}
+        queueCount={queueItems.length}
+        onOpenDrawer={handleMobileDrawer}
+        onDrop={handleDropOpen}
+      />
+
+      <DropSheet
+        open={dropSheetOpen}
+        roomSlug={room.slug}
+        isDj={isUserDj}
+        onClose={() => setDropSheetOpen(false)}
+        onOpenQueue={() => {
+          setSideTab("queue");
+          setMobileDrawer("queue");
+        }}
+        onToast={showToast}
+      />
+
       {toast && (
         <div
-          className="fixed z-[90] px-[18px] py-2.5 rounded-full font-extrabold text-[13px] text-[#1a0d06] animate-ndl-toast pointer-events-none"
+          className="fixed z-[90] px-[18px] py-2.5 rounded-full font-extrabold text-[13px] text-[#1a0d06] animate-ndl-toast pointer-events-none needle-mobile-toast"
           style={{
-            bottom: 104,
+            bottom: isMobile ? undefined : 104,
             left: "50%",
             transform: "translateX(-50%)",
             background: "linear-gradient(120deg, var(--glow), var(--accent))",

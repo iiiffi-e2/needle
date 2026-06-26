@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import type { ChatMessage, QueueItem, Room, RoomMember, User } from "@/lib/types";
+import type {
+  ChatMessage,
+  QueueItem,
+  Room,
+  RoomMember,
+  SavedTrack,
+  User,
+} from "@/lib/types";
 import { resolveUserColor } from "@/lib/design-tokens";
 import { getQueuePlaybackOrder } from "@/lib/queue-order";
 import { timeAgo } from "@/lib/utils";
@@ -9,7 +16,7 @@ import { ScrollOnHoverText } from "@/components/shared/ScrollOnHoverText";
 import { SystemMessage } from "@/components/shared/SystemMessage";
 import { NeedlebotMessage } from "@/components/shared/NeedlebotMessage";
 
-type TabId = "chat" | "queue" | "info";
+type TabId = "chat" | "queue" | "info" | "crate";
 
 interface RoomSidePanelProps {
   room: Room;
@@ -24,6 +31,9 @@ interface RoomSidePanelProps {
   currentDjUserId: string | null;
   activeTab: TabId;
   onTabChange: (tab: TabId) => void;
+  hideTabBar?: boolean;
+  mobileDrawerOpen?: boolean;
+  onCloseDrawer?: () => void;
 }
 
 export function RoomSidePanel({
@@ -39,10 +49,15 @@ export function RoomSidePanel({
   currentDjUserId,
   activeTab,
   onTabChange,
+  hideTabBar = false,
+  mobileDrawerOpen = false,
+  onCloseDrawer,
 }: RoomSidePanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(false);
+  const [savedTracks, setSavedTracks] = useState<SavedTrack[]>([]);
+  const [crateLoading, setCrateLoading] = useState(false);
   const chatRef = useRef<HTMLDivElement>(null);
 
   const tabs: { id: TabId; label: string; count?: number }[] = [
@@ -101,9 +116,68 @@ export function RoomSidePanel({
     currentDjUserId
   );
 
+  useEffect(() => {
+    if (activeTab !== "crate" || !currentUserId) return;
+    let cancelled = false;
+    setCrateLoading(true);
+    fetch(`/api/users/${currentUserId}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.savedTracks) {
+          setSavedTracks(data.savedTracks);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setCrateLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, currentUserId]);
+
+  const drawerTitles: Record<TabId, string> = {
+    chat: "Chat",
+    queue: "Queue",
+    info: "Room Info",
+    crate: "Your Crate",
+  };
+
   return (
-    <aside className="needle-sidebar min-h-[280px] lg:min-h-0">
-      <div className="flex gap-1 p-3 pt-3 pb-0">
+    <>
+      {mobileDrawerOpen && onCloseDrawer && (
+        <button
+          type="button"
+          className="needle-mobile-backdrop lg:hidden"
+          aria-label="Close panel"
+          onClick={onCloseDrawer}
+        />
+      )}
+      <aside
+        className={`needle-sidebar min-h-0 ${
+          mobileDrawerOpen ? "needle-sidebar-drawer-open" : ""
+        }`}
+      >
+        {hideTabBar && mobileDrawerOpen && (
+          <div className="flex items-center justify-between px-4 pt-3 pb-2 lg:hidden">
+            <h2 className="font-display font-extrabold text-[16px]">
+              {drawerTitles[activeTab]}
+            </h2>
+            <button
+              type="button"
+              onClick={onCloseDrawer}
+              className="w-8 h-8 rounded-full border-none cursor-pointer text-lg"
+              style={{
+                background: "#ffffff10",
+                color: "var(--sub)",
+              }}
+              aria-label="Close"
+            >
+              ×
+            </button>
+          </div>
+        )}
+        {!hideTabBar && (
+      <div className="hidden lg:flex gap-1 p-3 pt-3 pb-0">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -138,10 +212,11 @@ export function RoomSidePanel({
           </button>
         ))}
       </div>
-      <div className="h-px mt-[11px]" style={{ background: "var(--line)" }} />
+        )}
+      <div className="hidden lg:block h-px mt-[11px]" style={{ background: "var(--line)" }} />
 
       {activeTab === "chat" && (
-        <div className="flex-1 flex flex-col overflow-hidden min-h-[280px]">
+        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
           <div
             ref={chatRef}
             className="flex-1 overflow-y-auto p-3.5 flex flex-col gap-3"
@@ -222,7 +297,7 @@ export function RoomSidePanel({
       )}
 
       {activeTab === "queue" && (
-        <div className="flex-1 p-3.5 flex flex-col gap-2.5 overflow-y-auto">
+        <div className="flex-1 p-3.5 flex flex-col gap-2.5 overflow-y-auto min-h-0">
           <div className="text-[11px] text-muted tracking-wide">
             UP NEXT ON THE DECKS
           </div>
@@ -262,8 +337,56 @@ export function RoomSidePanel({
         </div>
       )}
 
+      {activeTab === "crate" && (
+        <div className="flex-1 p-3.5 flex flex-col gap-2.5 overflow-y-auto min-h-0">
+          <div className="text-[11px] text-muted tracking-wide">
+            SAVED TRACKS
+          </div>
+          {!currentUserId ? (
+            <p className="text-sm text-muted italic py-4 text-center">
+              Sign in to see your crate.
+            </p>
+          ) : crateLoading ? (
+            <p className="text-sm text-muted italic py-4 text-center">
+              Loading…
+            </p>
+          ) : savedTracks.length === 0 ? (
+            <p className="text-sm text-muted italic py-4 text-center">
+              Nothing saved yet — heart a track while it spins.
+            </p>
+          ) : (
+            savedTracks.map((st) => (
+              <div
+                key={st.id}
+                className="flex items-center gap-2.5 p-2 rounded-[11px] bg-[#ffffff08] border border-[var(--ndl-line)]"
+              >
+                <span
+                  className="w-10 h-10 rounded-lg shrink-0"
+                  style={{
+                    background: st.track?.thumbnail_url
+                      ? `url(${st.track.thumbnail_url}) center/cover`
+                      : "linear-gradient(135deg, var(--glow), var(--accent))",
+                  }}
+                />
+                <div className="flex-1 min-w-0">
+                  <ScrollOnHoverText
+                    text={st.track?.title || "Unknown"}
+                    className="text-[13px] font-bold"
+                  />
+                  {st.track?.artist && (
+                    <div className="text-[11px] text-muted truncate">
+                      {st.track.artist}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
       {activeTab === "info" && (
-        <div className="flex-1 p-4 flex flex-col gap-4 overflow-y-auto">
+        <div className="flex-1 p-4 flex flex-col gap-4 overflow-y-auto min-h-0">
           <div>
             <div className="font-display font-extrabold text-[17px]">
               {room.name}
@@ -311,6 +434,7 @@ export function RoomSidePanel({
         </div>
       )}
     </aside>
+    </>
   );
 }
 

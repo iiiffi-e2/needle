@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { NeedleLogo } from "@/components/shared/NeedleLogo";
 import { AvatarColorPicker } from "@/components/profile/AvatarColorPicker";
@@ -11,9 +11,8 @@ function OnboardingForm() {
   const [color, setColor] = useState<string>(CROWD_COLORS[0]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") || "/";
+  const redirect = searchParams.get("redirect") || "/rooms";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,8 +32,7 @@ function OnboardingForm() {
       return;
     }
 
-    router.push(redirect);
-    router.refresh();
+    window.location.assign(redirect);
   };
 
   return (
@@ -48,7 +46,7 @@ function OnboardingForm() {
         disabled={loading}
         className="mt-8 w-full max-w-xs btn-primary py-2.5 rounded-full font-bold disabled:opacity-50"
       >
-        {loading ? "Saving..." : "Enter the room"}
+        {loading ? "Saving..." : "Browse rooms"}
       </button>
     </form>
   );

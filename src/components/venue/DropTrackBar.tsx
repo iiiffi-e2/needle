@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { DjDropHint, markDjDropHintSeen } from "@/components/shared/DjDropHint";
 import { TrackSearchInput } from "@/components/shared/TrackSearchInput";
 
 interface DropTrackBarProps {
@@ -38,6 +39,7 @@ export function DropTrackBar({
         return;
       }
       onToast("Added to the queue");
+      markDjDropHintSeen();
       onOpenQueue();
     } finally {
       setLoading(false);
@@ -56,6 +58,7 @@ export function DropTrackBar({
           "linear-gradient(180deg, transparent, rgba(28, 18, 11, 0.8))",
       }}
     >
+      <DjDropHint isDj={isDj} />
       <button
         type="button"
         onClick={onOpenCrate}

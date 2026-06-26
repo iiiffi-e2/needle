@@ -13,7 +13,6 @@ interface MobilePlayerStackProps {
   userSaved: boolean;
   durationSeconds: number;
   isMuted: boolean;
-  autoplayBlocked?: boolean;
   onToggleMute: () => void;
   onReact: (glyph: string, color: string, type: string) => void;
   onVote: (dir: "awesome" | "lame") => void;
@@ -29,7 +28,6 @@ export function MobilePlayerStack({
   userSaved,
   durationSeconds,
   isMuted,
-  autoplayBlocked = false,
   onToggleMute,
   onReact,
   onVote,
@@ -47,7 +45,6 @@ export function MobilePlayerStack({
           userSaved={userSaved}
           durationSeconds={durationSeconds}
           isMuted={isMuted}
-          autoplayBlocked={autoplayBlocked}
           onToggleMute={onToggleMute}
           onVote={onVote}
           onSave={onSave}

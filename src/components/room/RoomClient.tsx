@@ -83,6 +83,7 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
     }
   });
   const [autoplayBlocked, setAutoplayBlocked] = useState(false);
+  const autoplayDismissedRef = useRef(false);
   const [playerDuration, setPlayerDuration] = useState<number | null>(null);
   const [sideTab, setSideTab] = useState<TabId>("chat");
   const [mobileDrawer, setMobileDrawer] = useState<TabId | null>(null);
@@ -185,9 +186,13 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
   }, []);
 
   const handleToggleMute = useCallback(() => {
+    autoplayDismissedRef.current = true;
+    setAutoplayBlocked(false);
+
     if (autoplayBlocked && !isMuted) {
       return;
     }
+
     setIsMuted((m) => {
       const next = !m;
       try {
@@ -198,6 +203,14 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
       return next;
     });
   }, [autoplayBlocked, isMuted, muteStorageKey]);
+
+  const handleAutoplayMuted = useCallback((blocked: boolean) => {
+    if (autoplayDismissedRef.current) return;
+    setAutoplayBlocked(blocked);
+    if (!blocked) {
+      autoplayDismissedRef.current = true;
+    }
+  }, []);
 
   const fling = useCallback((glyph: string, color: string) => {
     const id = Math.random().toString(36).slice(2);
@@ -437,7 +450,6 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
               userSaved={userSaved}
               durationSeconds={effectiveDuration}
               isMuted={isMuted}
-              autoplayBlocked={autoplayBlocked}
               onToggleMute={handleToggleMute}
               onVote={handleVote}
               onSave={handleSave}
@@ -479,7 +491,6 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
         userSaved={userSaved}
         durationSeconds={effectiveDuration}
         isMuted={isMuted}
-        autoplayBlocked={autoplayBlocked}
         onToggleMute={handleToggleMute}
         onReact={handleQuickReact}
         onVote={handleVote}
@@ -538,7 +549,7 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
           durationSeconds={effectiveDuration || track.duration_seconds}
           isPaused={playback.is_paused}
           muted={isMuted}
-          onAutoplayMuted={setAutoplayBlocked}
+          onAutoplayMuted={handleAutoplayMuted}
           onEnded={handleTrackEnded}
           onDurationReady={handleDurationReady}
         />

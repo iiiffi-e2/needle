@@ -14,7 +14,6 @@ interface MobileNowPlayingBarProps {
   userSaved: boolean;
   durationSeconds: number;
   isMuted: boolean;
-  autoplayBlocked?: boolean;
   onToggleMute: () => void;
   onVote: (dir: "awesome" | "lame") => void;
   onSave: () => void;
@@ -28,7 +27,6 @@ export function MobileNowPlayingBar({
   userSaved,
   durationSeconds,
   isMuted,
-  autoplayBlocked = false,
   onToggleMute,
   onVote,
   onSave,
@@ -129,31 +127,17 @@ export function MobileNowPlayingBar({
         <button
           type="button"
           onClick={onToggleMute}
-          title={
-            autoplayBlocked && !isMuted
-              ? "Tap to enable audio"
-              : isMuted
-                ? "Unmute"
-                : "Mute"
-          }
-          aria-label={
-            autoplayBlocked && !isMuted
-              ? "Tap to enable audio"
-              : isMuted
-                ? "Unmute"
-                : "Mute"
-          }
+          title={isMuted ? "Unmute" : "Mute"}
+          aria-label={isMuted ? "Unmute" : "Mute"}
           aria-pressed={isMuted}
           className={cn(
             "w-9 h-9 rounded-[10px] cursor-pointer flex items-center justify-center text-sm border",
-            autoplayBlocked && !isMuted
-              ? "bg-[color-mix(in_srgb,#ff9d3c_35%,transparent)] border-[var(--glow)] text-[var(--glow)] animate-ndl-pop"
-              : isMuted
-                ? "bg-[color-mix(in_srgb,#ff9d3c_25%,transparent)] border-[var(--glow)] text-[var(--glow)]"
-                : "bg-[#ffffff10] border-[var(--line)] text-[var(--sub)]"
+            isMuted
+              ? "bg-[color-mix(in_srgb,#ff9d3c_25%,transparent)] border-[var(--glow)] text-[var(--glow)]"
+              : "bg-[#ffffff10] border-[var(--line)] text-[var(--sub)]"
           )}
         >
-          {isMuted || (autoplayBlocked && !isMuted) ? "🔇" : "🔊"}
+          {isMuted ? "🔇" : "🔊"}
         </button>
         <button
           type="button"

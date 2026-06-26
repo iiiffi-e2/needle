@@ -14,7 +14,6 @@ interface NowPlayingPanelProps {
   userSaved: boolean;
   durationSeconds: number;
   isMuted: boolean;
-  autoplayBlocked?: boolean;
   onToggleMute: () => void;
   onVote: (dir: "awesome" | "lame") => void;
   onSave: () => void;
@@ -29,7 +28,6 @@ export function NowPlayingPanel({
   userSaved,
   durationSeconds,
   isMuted,
-  autoplayBlocked = false,
   onToggleMute,
   onVote,
   onSave,
@@ -200,31 +198,17 @@ export function NowPlayingPanel({
             <button
               type="button"
               onClick={onToggleMute}
-              title={
-                autoplayBlocked && !isMuted
-                  ? "Tap to enable audio"
-                  : isMuted
-                    ? "Unmute"
-                    : "Mute"
-              }
-              aria-label={
-                autoplayBlocked && !isMuted
-                  ? "Tap to enable audio"
-                  : isMuted
-                    ? "Unmute"
-                    : "Mute"
-              }
+              title={isMuted ? "Unmute" : "Mute"}
+              aria-label={isMuted ? "Unmute" : "Mute"}
               aria-pressed={isMuted}
               className={cn(
                 "w-[30px] h-[30px] shrink-0 cursor-pointer rounded-[8px] text-sm flex items-center justify-center",
-                autoplayBlocked && !isMuted
-                  ? "bg-[color-mix(in_srgb,#ff9d3c_35%,transparent)] border border-[var(--ndl-glow)] text-[var(--ndl-glow)] animate-ndl-pop"
-                  : isMuted
-                    ? "bg-[color-mix(in_srgb,#ff9d3c_25%,transparent)] border border-[var(--ndl-glow)] text-[var(--ndl-glow)]"
-                    : "bg-[#ffffff10] border border-[var(--ndl-line)] text-[var(--ndl-sub)] hover:text-[var(--ndl-txt)]"
+                isMuted
+                  ? "bg-[color-mix(in_srgb,#ff9d3c_25%,transparent)] border border-[var(--ndl-glow)] text-[var(--ndl-glow)]"
+                  : "bg-[#ffffff10] border border-[var(--ndl-line)] text-[var(--ndl-sub)] hover:text-[var(--ndl-txt)]"
               )}
             >
-              {isMuted || (autoplayBlocked && !isMuted) ? "🔇" : "🔊"}
+              {isMuted ? "🔇" : "🔊"}
             </button>
             <span
               className="text-[10px] tabular-nums w-[34px] shrink-0"

@@ -120,6 +120,16 @@ body {
   50% { opacity: 0.3; }
 }
 
+@keyframes ndl-float {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-16px) rotate(3deg); }
+}
+
+@keyframes ndl-needle {
+  0% { transform: rotate(-26deg); }
+  100% { transform: rotate(-19deg); }
+}
+
 @keyframes ndl-toast {
   0% { transform: translate(-50%, 18px); opacity: 0; }
   12%, 88% { transform: translate(-50%, 0); opacity: 1; }

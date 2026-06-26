@@ -1,18 +1,25 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { getAuthCallbackUrl } from "@/lib/utils";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { NeedleLogo } from "@/components/shared/NeedleLogo";
 
 function SignupForm() {
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    const prefill = searchParams.get("email");
+    if (prefill) setEmail(prefill);
+  }, [searchParams]);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();

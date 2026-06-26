@@ -90,6 +90,7 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
   const [dropSheetOpen, setDropSheetOpen] = useState(false);
   const [stepOffOpen, setStepOffOpen] = useState(false);
   const [deckLoading, setDeckLoading] = useState(false);
+  const [crateRefreshKey, setCrateRefreshKey] = useState(0);
   const advancingQueueItemRef = useRef<string | null>(null);
   const advancedQueueItemsRef = useRef(new Set<string>());
 
@@ -309,15 +310,20 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
   );
 
   const handleSave = useCallback(async () => {
+    if (!currentUserId) {
+      showToast("Sign in to save tracks");
+      return;
+    }
     const res = await fetch(`/api/rooms/${room.slug}/save`, {
       method: "POST",
     });
     if (res.ok) {
       setUserSaved(true);
+      setCrateRefreshKey((k) => k + 1);
       showToast("♥ Saved to your crate");
       fling("♥", "#ff6fae");
     }
-  }, [room.slug, showToast, fling]);
+  }, [room.slug, showToast, fling, currentUserId]);
 
   const handleJoinDeck = async () => {
     setDeckLoading(true);
@@ -397,6 +403,20 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
     setMobileDrawer(null);
   }, []);
 
+  const handleOpenCrate = useCallback(() => {
+    setSideTab("crate");
+    if (isMobile) {
+      setMobileDrawer("crate");
+    }
+  }, [isMobile]);
+
+  const handleOpenQueue = useCallback(() => {
+    setSideTab("queue");
+    if (isMobile) {
+      setMobileDrawer("queue");
+    }
+  }, [isMobile]);
+
   const marquee = track
     ? `NOW SPINNING · ${track.title}${track.artist ? ` — ${track.artist}` : ""} · played by ${dj?.display_name || "DJ"} · `
     : isDjSleeping
@@ -458,7 +478,8 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
           <DropTrackBar
             roomSlug={room.slug}
             isDj={isUserDj}
-            onOpenCrate={() => setSideTab("queue")}
+            onOpenCrate={handleOpenCrate}
+            onOpenQueue={handleOpenQueue}
             onToast={showToast}
           />
         </div>
@@ -474,8 +495,11 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
           initialMessages={initialData.messages}
           currentUserId={currentUserId}
           currentDjUserId={currentDjId}
+          isUserDj={isUserDj}
           activeTab={sideTab}
           onTabChange={setSideTab}
+          crateRefreshKey={crateRefreshKey}
+          onToast={showToast}
           hideTabBar={isMobile}
           mobileDrawerOpen={isMobile && mobileDrawer !== null}
           onCloseDrawer={closeMobileDrawer}
@@ -510,8 +534,7 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
         isDj={isUserDj}
         onClose={() => setDropSheetOpen(false)}
         onOpenQueue={() => {
-          setSideTab("queue");
-          setMobileDrawer("queue");
+          handleOpenQueue();
         }}
         onToast={showToast}
       />

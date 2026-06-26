@@ -19,15 +19,8 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { url } = await request.json();
-  const videoId = parseYouTubeUrl(url);
-
-  if (!videoId) {
-    return NextResponse.json(
-      { error: "Invalid YouTube URL" },
-      { status: 400 }
-    );
-  }
+  const body = await request.json();
+  const { url, trackId } = body as { url?: string; trackId?: string };
 
   const admin = createServiceClient();
   const { data: room } = await admin
@@ -54,24 +47,53 @@ export async function POST(
     );
   }
 
-  const metadata = await fetchYouTubeMetadata(videoId);
+  let track;
 
-  const { data: track, error: trackError } = await admin
-    .from("tracks")
-    .insert({
-      provider: "youtube",
-      provider_id: videoId,
-      url: `https://www.youtube.com/watch?v=${videoId}`,
-      title: metadata.title,
-      thumbnail_url: metadata.thumbnail_url,
-      duration_seconds: metadata.duration_seconds,
-      submitted_by: user.id,
-    })
-    .select()
-    .single();
+  if (trackId) {
+    const { data: existing, error: lookupError } = await admin
+      .from("tracks")
+      .select("*")
+      .eq("id", trackId)
+      .single();
 
-  if (trackError) {
-    return NextResponse.json({ error: trackError.message }, { status: 500 });
+    if (lookupError || !existing) {
+      return NextResponse.json({ error: "Track not found" }, { status: 404 });
+    }
+    track = existing;
+  } else if (url) {
+    const videoId = parseYouTubeUrl(url);
+    if (!videoId) {
+      return NextResponse.json(
+        { error: "Invalid YouTube URL" },
+        { status: 400 }
+      );
+    }
+
+    const metadata = await fetchYouTubeMetadata(videoId);
+
+    const { data: created, error: trackError } = await admin
+      .from("tracks")
+      .insert({
+        provider: "youtube",
+        provider_id: videoId,
+        url: `https://www.youtube.com/watch?v=${videoId}`,
+        title: metadata.title,
+        thumbnail_url: metadata.thumbnail_url,
+        duration_seconds: metadata.duration_seconds,
+        submitted_by: user.id,
+      })
+      .select()
+      .single();
+
+    if (trackError) {
+      return NextResponse.json({ error: trackError.message }, { status: 500 });
+    }
+    track = created;
+  } else {
+    return NextResponse.json(
+      { error: "Provide a YouTube URL or track ID" },
+      { status: 400 }
+    );
   }
 
   const { data: queueItem, error: queueError } = await admin

@@ -29,8 +29,11 @@ interface RoomSidePanelProps {
   initialMessages: ChatMessage[];
   currentUserId: string | null;
   currentDjUserId: string | null;
+  isUserDj: boolean;
   activeTab: TabId;
   onTabChange: (tab: TabId) => void;
+  crateRefreshKey?: number;
+  onToast?: (msg: string) => void;
   hideTabBar?: boolean;
   mobileDrawerOpen?: boolean;
   onCloseDrawer?: () => void;
@@ -47,8 +50,11 @@ export function RoomSidePanel({
   initialMessages,
   currentUserId,
   currentDjUserId,
+  isUserDj,
   activeTab,
   onTabChange,
+  crateRefreshKey = 0,
+  onToast,
   hideTabBar = false,
   mobileDrawerOpen = false,
   onCloseDrawer,
@@ -58,11 +64,13 @@ export function RoomSidePanel({
   const [loading, setLoading] = useState(false);
   const [savedTracks, setSavedTracks] = useState<SavedTrack[]>([]);
   const [crateLoading, setCrateLoading] = useState(false);
+  const [queuingTrackId, setQueuingTrackId] = useState<string | null>(null);
   const chatRef = useRef<HTMLDivElement>(null);
 
   const tabs: { id: TabId; label: string; count?: number }[] = [
     { id: "chat", label: "Chat" },
     { id: "queue", label: "Queue", count: queueItems.length },
+    { id: "crate", label: "Crate", count: savedTracks.length || undefined },
     { id: "info", label: "Room Info" },
   ];
 
@@ -133,7 +141,27 @@ export function RoomSidePanel({
     return () => {
       cancelled = true;
     };
-  }, [activeTab, currentUserId]);
+  }, [activeTab, currentUserId, crateRefreshKey]);
+
+  const queueFromCrate = async (trackId: string) => {
+    if (!isUserDj || queuingTrackId) return;
+    setQueuingTrackId(trackId);
+    try {
+      const res = await fetch(`/api/rooms/${roomSlug}/track`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trackId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        onToast?.(data.error || "Failed to add to queue");
+        return;
+      }
+      onToast?.("Added to the queue");
+    } finally {
+      setQueuingTrackId(null);
+    }
+  };
 
   const drawerTitles: Record<TabId, string> = {
     chat: "Chat",
@@ -358,32 +386,86 @@ export function RoomSidePanel({
               Nothing saved yet — heart a track while it spins.
             </p>
           ) : (
-            savedTracks.map((st) => (
-              <div
-                key={st.id}
-                className="flex items-center gap-2.5 p-2 rounded-[11px] bg-[#ffffff08] border border-[var(--ndl-line)]"
-              >
-                <span
-                  className="w-10 h-10 rounded-lg shrink-0"
-                  style={{
-                    background: st.track?.thumbnail_url
-                      ? `url(${st.track.thumbnail_url}) center/cover`
-                      : "linear-gradient(135deg, var(--glow), var(--accent))",
-                  }}
-                />
-                <div className="flex-1 min-w-0">
-                  <ScrollOnHoverText
-                    text={st.track?.title || "Unknown"}
-                    className="text-[13px] font-bold"
-                  />
-                  {st.track?.artist && (
-                    <div className="text-[11px] text-muted truncate">
-                      {st.track.artist}
-                    </div>
+            savedTracks.map((st) => {
+              const youtubeUrl =
+                st.track?.url ||
+                (st.track?.provider === "youtube" && st.track.provider_id
+                  ? `https://www.youtube.com/watch?v=${st.track.provider_id}`
+                  : null);
+
+              return (
+                <div
+                  key={st.id}
+                  className="flex items-center gap-2.5 p-2 rounded-[11px] bg-[#ffffff08] border border-[var(--ndl-line)]"
+                >
+                  {youtubeUrl ? (
+                    <a
+                      href={youtubeUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-10 h-10 rounded-lg shrink-0 block"
+                      style={{
+                        background: st.track?.thumbnail_url
+                          ? `url(${st.track.thumbnail_url}) center/cover`
+                          : "linear-gradient(135deg, var(--glow), var(--accent))",
+                      }}
+                      title="Open on YouTube"
+                    />
+                  ) : (
+                    <span
+                      className="w-10 h-10 rounded-lg shrink-0"
+                      style={{
+                        background: st.track?.thumbnail_url
+                          ? `url(${st.track.thumbnail_url}) center/cover`
+                          : "linear-gradient(135deg, var(--glow), var(--accent))",
+                      }}
+                    />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    {youtubeUrl ? (
+                      <a
+                        href={youtubeUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block min-w-0 hover:text-[var(--glow2)] transition-colors"
+                      >
+                        <ScrollOnHoverText
+                          text={st.track?.title || "Unknown"}
+                          className="text-[13px] font-bold"
+                        />
+                      </a>
+                    ) : (
+                      <ScrollOnHoverText
+                        text={st.track?.title || "Unknown"}
+                        className="text-[13px] font-bold"
+                      />
+                    )}
+                    {st.track?.artist && (
+                      <div className="text-[11px] text-muted truncate">
+                        {st.track.artist}
+                      </div>
+                    )}
+                  </div>
+                  {isUserDj && st.track_id && (
+                    <button
+                      type="button"
+                      onClick={() => queueFromCrate(st.track_id)}
+                      disabled={queuingTrackId === st.track_id}
+                      title="Add to queue"
+                      aria-label="Add to queue"
+                      className="w-9 h-9 shrink-0 rounded-[10px] border-none cursor-pointer flex items-center justify-center text-base font-extrabold disabled:opacity-50"
+                      style={{
+                        background:
+                          "linear-gradient(120deg, var(--glow2), var(--glow))",
+                        color: "#1a0d06",
+                      }}
+                    >
+                      {queuingTrackId === st.track_id ? "…" : "+"}
+                    </button>
                   )}
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       )}

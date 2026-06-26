@@ -6,6 +6,7 @@ interface DropTrackBarProps {
   roomSlug: string;
   isDj: boolean;
   onOpenCrate: () => void;
+  onOpenQueue: () => void;
   onToast: (msg: string) => void;
 }
 
@@ -13,6 +14,7 @@ export function DropTrackBar({
   roomSlug,
   isDj,
   onOpenCrate,
+  onOpenQueue,
   onToast,
 }: DropTrackBarProps) {
   const [url, setUrl] = useState("");
@@ -42,7 +44,7 @@ export function DropTrackBar({
       }
       setUrl("");
       onToast("Added to the queue");
-      onOpenCrate();
+      onOpenQueue();
     } finally {
       setLoading(false);
     }

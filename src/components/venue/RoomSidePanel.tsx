@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import type {
   ChatMessage,
+  DjWaitlistEntry,
   QueueItem,
   Room,
   RoomMember,
@@ -25,6 +26,7 @@ interface RoomSidePanelProps {
   queueItems: QueueItem[];
   djSlots: { user_id: string; user?: User }[];
   djUserIds: Set<string>;
+  waitlist?: DjWaitlistEntry[];
   listenerCount: number;
   roomSlug: string;
   initialMessages: ChatMessage[];
@@ -46,6 +48,7 @@ export function RoomSidePanel({
   queueItems,
   djSlots,
   djUserIds,
+  waitlist = [],
   listenerCount,
   roomSlug,
   initialMessages,
@@ -574,6 +577,25 @@ export function RoomSidePanel({
               <div className="text-[10.5px] text-muted">decks filled</div>
             </div>
           </div>
+          {waitlist.length > 0 && (
+            <div>
+              <div className="text-[11px] text-muted tracking-wide mb-2">
+                DJ WAITLIST ({waitlist.length})
+              </div>
+              <ol className="flex flex-col gap-1">
+                {[...waitlist]
+                  .sort((a, b) => a.position - b.position)
+                  .map((entry, index) => (
+                    <li
+                      key={entry.id}
+                      className="text-[12.5px] text-[var(--txt)]"
+                    >
+                      {index + 1}. {entry.user?.display_name || "Anonymous"}
+                    </li>
+                  ))}
+              </ol>
+            </div>
+          )}
           <div>
             <div className="text-[11px] text-muted tracking-wide mb-2">
               ON THE FLOOR

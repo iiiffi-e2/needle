@@ -351,8 +351,13 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        showToast("You're on the deck — line up a track");
-        flingBurst("★", "#ffd166", 3);
+        if (data.waitlisted) {
+          const pos = data.waitlistPosition ?? waitlist.length + 1;
+          showToast(`You're #${pos} in line for the booth`);
+        } else {
+          showToast("You're on the deck — line up a track");
+          flingBurst("★", "#ffd166", 3);
+        }
         await refresh();
       } else {
         showToast(data.error || "Could not join deck");
@@ -367,6 +372,19 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
     try {
       await fetch(`/api/rooms/${room.slug}/dj`, { method: "DELETE" });
       await refresh();
+    } finally {
+      setDeckLoading(false);
+    }
+  };
+
+  const handleLeaveWaitlist = async () => {
+    setDeckLoading(true);
+    try {
+      const res = await fetch(`/api/rooms/${room.slug}/dj`, { method: "DELETE" });
+      if (res.ok) {
+        showToast("Left the waitlist");
+        await refresh();
+      }
     } finally {
       setDeckLoading(false);
     }
@@ -392,6 +410,14 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
   );
   const isUserDj = djSlots.some((s) => s.user_id === currentUserId);
   const isUserWaitlisted = waitlist.some((w) => w.user_id === currentUserId);
+  const waitlistCount = waitlist.length;
+  const waitlistPosition = isUserWaitlisted
+    ? [...waitlist]
+        .sort((a, b) => a.position - b.position)
+        .findIndex((w) => w.user_id === currentUserId) + 1
+    : null;
+  const deckJoinMode: "deck" | "waitlist" =
+    djSlots.length >= room.max_djs || waitlistCount > 0 ? "waitlist" : "deck";
   const currentUser = members.find((m) => m.user_id === currentUserId)?.user;
 
   const currentDjId = playback?.current_dj_user_id || null;
@@ -476,6 +502,10 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
                 isMobile && isUserDj ? () => setStepOffOpen(true) : undefined
               }
               deckLoading={deckLoading}
+              waitlistCount={waitlistCount}
+              waitlistPosition={waitlistPosition}
+              deckJoinMode={deckJoinMode}
+              onLeaveWaitlist={handleLeaveWaitlist}
             />
             <ReactionBursts bursts={bursts} />
             <QuickReacts roomSlug={room.slug} onReact={handleQuickReact} />
@@ -510,6 +540,7 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
           queueItems={queueItems}
           djSlots={djSlots}
           djUserIds={djUserIds}
+          waitlist={waitlist}
           listenerCount={members.length}
           roomSlug={room.slug}
           initialMessages={initialData.messages}

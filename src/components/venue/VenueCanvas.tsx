@@ -103,6 +103,7 @@ interface DeckSlotProps {
   onTapOwnBlob?: () => void;
   loading: boolean;
   canJoin: boolean;
+  joinLabel?: string;
 }
 
 function OwnDeckBlobTap({
@@ -138,6 +139,7 @@ function DeckSlot({
   onTapOwnBlob,
   loading,
   canJoin,
+  joinLabel = "JOIN DECK",
 }: DeckSlotProps) {
   const isLeft = side === "left";
   const accentRgb = isLeft ? "255, 157, 60" : "123, 92, 255";
@@ -235,7 +237,7 @@ function DeckSlot({
           cursor: canJoin ? "pointer" : "default",
         }}
       >
-        JOIN DECK
+        {joinLabel}
       </button>
     </div>
   );
@@ -256,6 +258,10 @@ export interface VenueCanvasProps {
   onLeaveDeck: () => void;
   onRequestLeaveDeck?: () => void;
   deckLoading: boolean;
+  waitlistCount: number;
+  waitlistPosition: number | null;
+  deckJoinMode: "deck" | "waitlist";
+  onLeaveWaitlist: () => void;
 }
 
 export function VenueCanvas({
@@ -273,8 +279,13 @@ export function VenueCanvas({
   onLeaveDeck,
   onRequestLeaveDeck,
   deckLoading,
+  waitlistCount,
+  waitlistPosition,
+  deckJoinMode,
+  onLeaveWaitlist,
 }: VenueCanvasProps) {
   const requestStepOff = onRequestLeaveDeck;
+  const joinLabel = deckJoinMode === "waitlist" ? "JOIN WAITLIST" : "JOIN DECK";
   const glowOpacity = 0.32 + (energy / 100) * 0.6;
   const neonGlowOpacity = 0.25 + (energy / 100) * 0.55;
   const beamOpacity = 0.4 + (energy / 100) * 0.45;
@@ -524,8 +535,31 @@ export function VenueCanvas({
           onTapOwnBlob={requestStepOff}
           loading={deckLoading}
           canJoin={canJoinDeck}
+          joinLabel={joinLabel}
         />
       </div>
+
+      {waitlistCount > 0 && (
+        <div
+          className="absolute z-[12] pointer-events-none"
+          style={{
+            top: "33%",
+            left: "50%",
+            transform: "translateX(-50%)",
+          }}
+        >
+          <span
+            className="px-2.5 py-1 rounded-full font-bold text-[10px] tracking-wide"
+            style={{
+              background: "rgba(123, 92, 255, 0.18)",
+              border: "1px solid rgba(123, 92, 255, 0.35)",
+              color: "var(--neon)",
+            }}
+          >
+            {waitlistCount} waiting
+          </span>
+        </div>
+      )}
 
       {/* Center DJ */}
       <div
@@ -664,8 +698,44 @@ export function VenueCanvas({
           onTapOwnBlob={requestStepOff}
           loading={deckLoading}
           canJoin={canJoinDeck}
+          joinLabel={joinLabel}
         />
       </div>
+
+      {waitlistPosition != null && (
+        <div
+          className="absolute z-[15] flex items-center gap-2 pointer-events-auto"
+          style={{
+            bottom: "18%",
+            left: "50%",
+            transform: "translateX(-50%)",
+          }}
+        >
+          <span
+            className="px-3 py-1.5 rounded-full text-[11px] font-bold"
+            style={{
+              background: "#ffffff10",
+              border: "1px solid var(--line)",
+              color: "var(--txt)",
+            }}
+          >
+            You&apos;re #{waitlistPosition} in line
+          </span>
+          <button
+            type="button"
+            onClick={onLeaveWaitlist}
+            disabled={deckLoading}
+            className="px-3 py-1.5 rounded-full text-[11px] font-bold disabled:opacity-50"
+            style={{
+              border: "1px solid var(--line)",
+              background: "#ffffff10",
+              color: "var(--sub)",
+            }}
+          >
+            Leave waitlist
+          </button>
+        </div>
+      )}
 
       {/* Turntable booth */}
       <div

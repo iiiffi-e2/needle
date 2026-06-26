@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { postSystemMessage } from "@/lib/playback";
 import { bumpRoomEnergy, ENERGY_BUMP } from "@/lib/room-energy";
+import { removeDjFromBooth, shouldJoinWaitlist } from "@/lib/dj-booth";
 
 export async function POST(
   _request: Request,
@@ -40,8 +41,24 @@ export async function POST(
     return NextResponse.json({ error: "Already in booth" }, { status: 400 });
   }
 
+  const { data: existingWaitlist } = await admin
+    .from("dj_waitlist")
+    .select("id")
+    .eq("room_id", room.id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (existingWaitlist) {
+    return NextResponse.json({ error: "Already on waitlist" }, { status: 400 });
+  }
+
   const { count: slotCount } = await admin
     .from("dj_slots")
+    .select("*", { count: "exact", head: true })
+    .eq("room_id", room.id);
+
+  const { count: waitlistCount } = await admin
+    .from("dj_waitlist")
     .select("*", { count: "exact", head: true })
     .eq("room_id", room.id);
 
@@ -51,7 +68,7 @@ export async function POST(
     .eq("id", user.id)
     .single();
 
-  if ((slotCount || 0) < room.max_djs) {
+  if (!shouldJoinWaitlist(slotCount || 0, room.max_djs, waitlistCount || 0)) {
     const { data: slots } = await admin
       .from("dj_slots")
       .select("position")
@@ -140,7 +157,11 @@ export async function POST(
     `${profile?.display_name || "Someone"} joined the DJ waitlist.`
   );
 
-  return NextResponse.json({ entry, waitlisted: true });
+  return NextResponse.json({
+    entry,
+    waitlisted: true,
+    waitlistPosition: entry.position + 1,
+  });
 }
 
 export async function DELETE(
@@ -168,65 +189,32 @@ export async function DELETE(
     return NextResponse.json({ error: "Room not found" }, { status: 404 });
   }
 
-  const { data: leavingSlot } = await admin
-    .from("dj_slots")
-    .select("id, position")
-    .eq("room_id", room.id)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  const { data: playback } = await admin
-    .from("room_playback")
-    .select("current_dj_user_id, current_track_id")
-    .eq("room_id", room.id)
-    .maybeSingle();
-
-  const wasCurrentDj = playback?.current_dj_user_id === user.id;
-  const wasPlaying = wasCurrentDj && !!playback?.current_track_id;
-
-  await admin
-    .from("dj_slots")
-    .delete()
-    .eq("room_id", room.id)
-    .eq("user_id", user.id);
-
-  await admin
-    .from("dj_waitlist")
-    .delete()
-    .eq("room_id", room.id)
-    .eq("user_id", user.id);
-
-  await admin
-    .from("queue_items")
-    .delete()
-    .eq("room_id", room.id)
-    .eq("dj_user_id", user.id)
-    .eq("status", "queued");
-
-  await admin
-    .from("room_members")
-    .update({ role: "listener" })
-    .eq("room_id", room.id)
-    .eq("user_id", user.id);
-
   const { data: profile } = await admin
     .from("users")
     .select("display_name")
     .eq("id", user.id)
     .single();
 
-  await postSystemMessage(
-    admin,
-    room.id,
-    wasPlaying
-      ? `🚪 ${profile?.display_name || "The DJ"} stepped off — track cut short.`
-      : `${profile?.display_name || "Someone"} left the booth.`
-  );
+  const result = await removeDjFromBooth(admin, room.id, user.id);
 
-  if (wasCurrentDj) {
+  if (!result.wasOnDeck && !result.wasWaitlisted) {
+    return NextResponse.json({ error: "Not on deck or waitlist" }, { status: 400 });
+  }
+
+  if (result.wasOnDeck) {
+    await postSystemMessage(
+      admin,
+      room.id,
+      result.wasPlaying
+        ? `🚪 ${profile?.display_name || "The DJ"} stepped off — track cut short.`
+        : `${profile?.display_name || "Someone"} left the booth.`
+    );
+  }
+
+  if (result.wasCurrentDj) {
     const { advancePlayback } = await import("@/lib/playback");
-    await advancePlayback(admin, room.id, wasPlaying ? "skipped" : "ended", {
-      afterDepartedDjPosition: leavingSlot?.position,
+    await advancePlayback(admin, room.id, result.wasPlaying ? "skipped" : "ended", {
+      afterDepartedDjPosition: result.slotPosition ?? undefined,
     });
   }
 

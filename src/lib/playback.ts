@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { processInactiveDjs } from "@/lib/dj-booth";
 
 export async function postSystemMessage(
   supabase: SupabaseClient,
@@ -204,7 +205,7 @@ export async function advancePlayback(
 
       played = true;
       break;
-    } else if (slots.length > 1) {
+    } else {
       await supabase
         .from("dj_slots")
         .update({ missed_turns: (slot.missed_turns || 0) + 1 })
@@ -240,52 +241,11 @@ export async function advancePlayback(
       updated_at: new Date().toISOString(),
     });
 
-    // Rotate out DJs with 3+ missed turns if waitlist exists
-    const { data: waitlist } = await supabase
-      .from("dj_waitlist")
-      .select("*")
-      .eq("room_id", roomId)
-      .order("position");
+    await processInactiveDjs(supabase, roomId);
+  }
 
-    if (waitlist && waitlist.length > 0) {
-      const { data: inactiveSlots } = await supabase
-        .from("dj_slots")
-        .select("*")
-        .eq("room_id", roomId)
-        .gte("missed_turns", 3);
-
-      for (const inactive of inactiveSlots || []) {
-        const nextWaiter = waitlist[0];
-        await supabase.from("dj_slots").delete().eq("id", inactive.id);
-        await supabase.from("dj_waitlist").delete().eq("id", nextWaiter.id);
-
-        const { data: currentSlots } = await supabase
-          .from("dj_slots")
-          .select("position")
-          .eq("room_id", roomId)
-          .order("position", { ascending: false })
-          .limit(1);
-
-        const newPosition = (currentSlots?.[0]?.position ?? -1) + 1;
-        await supabase.from("dj_slots").insert({
-          room_id: roomId,
-          user_id: nextWaiter.user_id,
-          position: newPosition,
-        });
-
-        const { data: waiter } = await supabase
-          .from("users")
-          .select("display_name")
-          .eq("id", nextWaiter.user_id)
-          .single();
-
-        await postSystemMessage(
-          supabase,
-          roomId,
-          `${waiter?.display_name || "Someone"} rotated into the booth from the waitlist.`
-        );
-      }
-    }
+  if (played) {
+    await processInactiveDjs(supabase, roomId);
   }
 
   return { advanced: played, reason };

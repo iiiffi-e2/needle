@@ -274,6 +274,24 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
     [room.slug, refresh]
   );
 
+  const canSkip =
+    !!currentUserId &&
+    !!playback?.current_track_id &&
+    playback.current_dj_user_id === currentUserId;
+
+  const handleSkip = useCallback(async () => {
+    const queueItemId = playback?.current_queue_item_id;
+    if (!queueItemId) return;
+
+    const res = await fetch(`/api/rooms/${room.slug}/skip`, {
+      method: "POST",
+    });
+    if (res.ok) {
+      advancedQueueItemsRef.current.add(queueItemId);
+    }
+    await refresh();
+  }, [room.slug, playback?.current_queue_item_id, refresh]);
+
   const handleVote = useCallback(
     async (voteType: "awesome" | "lame") => {
       const res = await fetch(`/api/rooms/${room.slug}/vote`, {
@@ -470,9 +488,11 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
               userSaved={userSaved}
               durationSeconds={effectiveDuration}
               isMuted={isMuted}
+              canSkip={canSkip}
               onToggleMute={handleToggleMute}
               onVote={handleVote}
               onSave={handleSave}
+              onSkip={handleSkip}
             />
           </div>
           <DropTrackBar
@@ -515,10 +535,12 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
         userSaved={userSaved}
         durationSeconds={effectiveDuration}
         isMuted={isMuted}
+        canSkip={canSkip}
         onToggleMute={handleToggleMute}
         onReact={handleQuickReact}
         onVote={handleVote}
         onSave={handleSave}
+        onSkip={handleSkip}
       />
 
       <MobileBottomNav

@@ -14,9 +14,11 @@ interface NowPlayingPanelProps {
   userSaved: boolean;
   durationSeconds: number;
   isMuted: boolean;
+  canSkip: boolean;
   onToggleMute: () => void;
   onVote: (dir: "awesome" | "lame") => void;
   onSave: () => void;
+  onSkip: () => void;
 }
 
 export function NowPlayingPanel({
@@ -28,12 +30,15 @@ export function NowPlayingPanel({
   userSaved,
   durationSeconds,
   isMuted,
+  canSkip,
   onToggleMute,
   onVote,
   onSave,
+  onSkip,
 }: NowPlayingPanelProps) {
   const [elapsed, setElapsed] = useState(0);
   const [loading, setLoading] = useState<string | null>(null);
+  const [skipping, setSkipping] = useState(false);
 
   const duration = durationSeconds;
 
@@ -89,6 +94,16 @@ export function NowPlayingPanel({
       await onSave();
     } finally {
       setLoading(null);
+    }
+  };
+
+  const handleSkip = async () => {
+    if (!canSkip || skipping) return;
+    setSkipping(true);
+    try {
+      await onSkip();
+    } finally {
+      setSkipping(false);
     }
   };
 
@@ -153,15 +168,27 @@ export function NowPlayingPanel({
             </div>
 
             <div className="flex-1 min-w-0">
-              <div
-                className="font-bold uppercase mb-0.5"
-                style={{
-                  fontSize: 9.5,
-                  letterSpacing: "0.14em",
-                  color: "var(--ndl-glow2)",
-                }}
-              >
-                Now spinning
+              <div className="flex items-center gap-2 mb-0.5">
+                <div
+                  className="font-bold uppercase"
+                  style={{
+                    fontSize: 9.5,
+                    letterSpacing: "0.14em",
+                    color: "var(--ndl-glow2)",
+                  }}
+                >
+                  Now spinning
+                </div>
+                {canSkip && (
+                  <button
+                    type="button"
+                    onClick={handleSkip}
+                    disabled={skipping}
+                    className="ml-auto shrink-0 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-md bg-[#ffffff10] border border-[var(--ndl-line)] text-[var(--ndl-sub)] hover:text-[var(--ndl-txt)] disabled:opacity-50 cursor-pointer"
+                  >
+                    {skipping ? "Skipping…" : "Skip"}
+                  </button>
+                )}
               </div>
               <div className="font-display font-bold text-base leading-tight truncate">
                 {track.title}

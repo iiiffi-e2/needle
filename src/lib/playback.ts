@@ -20,6 +20,19 @@ export interface AdvancePlaybackOptions {
   afterDepartedDjPosition?: number;
 }
 
+/** Whether playback should rotate to another DJ after the current track. */
+export function shouldRotateToNextDj(
+  djSlotUserIds: string[],
+  queuedDjUserIds: string[],
+  currentDjUserId: string | null
+): boolean {
+  if (djSlotUserIds.length <= 1 || !currentDjUserId) return false;
+
+  return queuedDjUserIds.some(
+    (id) => id !== currentDjUserId && djSlotUserIds.includes(id)
+  );
+}
+
 export async function advancePlayback(
   supabase: SupabaseClient,
   roomId: string,
@@ -70,8 +83,26 @@ export async function advancePlayback(
   }
 
   const currentDjId = playback?.current_dj_user_id;
-  const stayOnCurrentDj =
-    options.stayOnCurrentDj ?? djSlots.length <= 1;
+
+  let stayOnCurrentDj = options.stayOnCurrentDj;
+  if (stayOnCurrentDj == null) {
+    const { data: queuedItems } = await supabase
+      .from("queue_items")
+      .select("dj_user_id")
+      .eq("room_id", roomId)
+      .eq("status", "queued");
+
+    const queuedDjUserIds = [
+      ...new Set((queuedItems ?? []).map((item) => item.dj_user_id)),
+    ];
+
+    stayOnCurrentDj = !shouldRotateToNextDj(
+      djSlots.map((s) => s.user_id),
+      queuedDjUserIds,
+      currentDjId ?? null
+    );
+  }
+
   let startIndex = 0;
 
   if (currentDjId) {

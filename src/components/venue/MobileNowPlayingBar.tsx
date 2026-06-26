@@ -14,9 +14,11 @@ interface MobileNowPlayingBarProps {
   userSaved: boolean;
   durationSeconds: number;
   isMuted: boolean;
+  canSkip: boolean;
   onToggleMute: () => void;
   onVote: (dir: "awesome" | "lame") => void;
   onSave: () => void;
+  onSkip: () => void;
 }
 
 export function MobileNowPlayingBar({
@@ -27,12 +29,15 @@ export function MobileNowPlayingBar({
   userSaved,
   durationSeconds,
   isMuted,
+  canSkip,
   onToggleMute,
   onVote,
   onSave,
+  onSkip,
 }: MobileNowPlayingBarProps) {
   const [elapsed, setElapsed] = useState(0);
   const [loading, setLoading] = useState<string | null>(null);
+  const [skipping, setSkipping] = useState(false);
 
   useEffect(() => {
     if (!playback?.started_at) {
@@ -83,6 +88,16 @@ export function MobileNowPlayingBar({
     }
   };
 
+  const handleSkip = async () => {
+    if (!canSkip || skipping) return;
+    setSkipping(true);
+    try {
+      await onSkip();
+    } finally {
+      setSkipping(false);
+    }
+  };
+
   const upActive = myVote === "awesome";
 
   return (
@@ -124,6 +139,18 @@ export function MobileNowPlayingBar({
       </div>
 
       <div className="flex items-center gap-1.5 shrink-0">
+        {canSkip && (
+          <button
+            type="button"
+            onClick={handleSkip}
+            disabled={skipping}
+            title="Skip track"
+            aria-label="Skip track"
+            className="w-9 h-9 rounded-[10px] cursor-pointer flex items-center justify-center text-sm border bg-[#ffffff10] border-[var(--line)] text-[var(--sub)] disabled:opacity-50"
+          >
+            {skipping ? "…" : "⏭"}
+          </button>
+        )}
         <button
           type="button"
           onClick={onToggleMute}

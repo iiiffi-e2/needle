@@ -13,10 +13,12 @@ interface MobilePlayerStackProps {
   userSaved: boolean;
   durationSeconds: number;
   isMuted: boolean;
+  canSkip: boolean;
   onToggleMute: () => void;
   onReact: (glyph: string, color: string, type: string) => void;
   onVote: (dir: "awesome" | "lame") => void;
   onSave: () => void;
+  onSkip: () => void;
 }
 
 export function MobilePlayerStack({
@@ -28,10 +30,12 @@ export function MobilePlayerStack({
   userSaved,
   durationSeconds,
   isMuted,
+  canSkip,
   onToggleMute,
   onReact,
   onVote,
   onSave,
+  onSkip,
 }: MobilePlayerStackProps) {
   return (
     <div className="needle-mobile-player-stack lg:hidden">
@@ -45,9 +49,11 @@ export function MobilePlayerStack({
           userSaved={userSaved}
           durationSeconds={durationSeconds}
           isMuted={isMuted}
+          canSkip={canSkip}
           onToggleMute={onToggleMute}
           onVote={onVote}
           onSave={onSave}
+          onSkip={onSkip}
         />
       )}
     </div>

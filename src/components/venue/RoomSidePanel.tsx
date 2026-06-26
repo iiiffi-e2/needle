@@ -142,6 +142,8 @@ export function RoomSidePanel({
     crate: "Your Crate",
   };
 
+  const showPanelContent = !hideTabBar || mobileDrawerOpen;
+
   return (
     <>
       {mobileDrawerOpen && onCloseDrawer && (
@@ -156,6 +158,7 @@ export function RoomSidePanel({
         className={`needle-sidebar min-h-0 ${
           mobileDrawerOpen ? "needle-sidebar-drawer-open" : ""
         }`}
+        aria-hidden={hideTabBar ? !mobileDrawerOpen : undefined}
       >
         {hideTabBar && mobileDrawerOpen && (
           <div className="flex items-center justify-between px-4 pt-3 pb-2 lg:hidden">
@@ -215,7 +218,7 @@ export function RoomSidePanel({
         )}
       <div className="hidden lg:block h-px mt-[11px]" style={{ background: "var(--line)" }} />
 
-      {activeTab === "chat" && (
+      {showPanelContent && activeTab === "chat" && (
         <div className="flex-1 flex flex-col overflow-hidden min-h-0">
           <div
             ref={chatRef}
@@ -296,7 +299,7 @@ export function RoomSidePanel({
         </div>
       )}
 
-      {activeTab === "queue" && (
+      {showPanelContent && activeTab === "queue" && (
         <div className="flex-1 p-3.5 flex flex-col gap-2.5 overflow-y-auto min-h-0">
           <div className="text-[11px] text-muted tracking-wide">
             UP NEXT ON THE DECKS
@@ -337,7 +340,7 @@ export function RoomSidePanel({
         </div>
       )}
 
-      {activeTab === "crate" && (
+      {showPanelContent && activeTab === "crate" && (
         <div className="flex-1 p-3.5 flex flex-col gap-2.5 overflow-y-auto min-h-0">
           <div className="text-[11px] text-muted tracking-wide">
             SAVED TRACKS
@@ -385,7 +388,7 @@ export function RoomSidePanel({
         </div>
       )}
 
-      {activeTab === "info" && (
+      {showPanelContent && activeTab === "info" && (
         <div className="flex-1 p-4 flex flex-col gap-4 overflow-y-auto min-h-0">
           <div>
             <div className="font-display font-extrabold text-[17px]">

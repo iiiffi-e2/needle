@@ -235,18 +235,25 @@ body {
     right: 0;
     bottom: calc(64px + env(safe-area-inset-bottom, 0px));
     width: 100%;
+    height: min(58vh, calc(100dvh - 180px));
     max-height: min(58vh, calc(100dvh - 180px));
     border-left: none;
     border-top: 1px solid var(--line);
     border-radius: 18px 18px 0 0;
     transform: translateY(calc(100% + 12px));
-    transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
-    z-index: 70;
+    transition:
+      transform 0.28s cubic-bezier(0.32, 0.72, 0, 1),
+      visibility 0.28s;
+    z-index: 40;
+    overflow: hidden;
+    visibility: hidden;
     box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.55);
   }
 
   .needle-sidebar-drawer-open {
     transform: translateY(0);
+    visibility: visible;
+    z-index: 70;
   }
 
   .needle-sidebar:not(.needle-sidebar-drawer-open) {

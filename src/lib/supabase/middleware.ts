@@ -37,24 +37,32 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith("/auth/") && pathname !== "/auth/onboarding";
   const isApi = pathname.startsWith("/api/");
 
-  if (
-    user &&
-    !isPublicAsset &&
-    !isAuthFlow &&
-    !isApi &&
-    pathname !== "/auth/onboarding"
-  ) {
+  if (user && !isPublicAsset && !isApi) {
     const { data: profile } = await supabase
       .from("users")
       .select("avatar_color")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
 
-    if (!profile?.avatar_color) {
+    const hasAvatarColor = Boolean(profile?.avatar_color);
+
+    if (pathname === "/auth/onboarding") {
+      if (hasAvatarColor) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/rooms";
+        url.search = "";
+        return NextResponse.redirect(url);
+      }
+      return supabaseResponse;
+    }
+
+    if (!isAuthFlow && !hasAvatarColor) {
       const url = request.nextUrl.clone();
       url.pathname = "/auth/onboarding";
       if (pathname !== "/") {
         url.searchParams.set("redirect", pathname + request.nextUrl.search);
+      } else {
+        url.searchParams.set("redirect", "/rooms");
       }
       return NextResponse.redirect(url);
     }

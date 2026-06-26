@@ -43,16 +43,43 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "No updates provided" }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const profileFields = "id, display_name, avatar_color, avatar_url, created_at";
+
+  const { data: updated, error: updateError } = await supabase
     .from("users")
     .update(updates)
     .eq("id", user.id)
-    .select("id, display_name, avatar_color, avatar_url, created_at")
-    .single();
+    .select(profileFields)
+    .maybeSingle();
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (updateError) {
+    return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 
-  return NextResponse.json(data);
+  if (updated) {
+    return NextResponse.json(updated);
+  }
+
+  const displayName =
+    (typeof user.user_metadata?.display_name === "string" &&
+      user.user_metadata.display_name.trim()) ||
+    user.email?.split("@")[0] ||
+    "User";
+
+  const { data: inserted, error: insertError } = await supabase
+    .from("users")
+    .insert({
+      id: user.id,
+      email: user.email ?? null,
+      display_name: displayName,
+      ...updates,
+    })
+    .select(profileFields)
+    .single();
+
+  if (insertError) {
+    return NextResponse.json({ error: insertError.message }, { status: 500 });
+  }
+
+  return NextResponse.json(inserted);
 }

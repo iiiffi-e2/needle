@@ -224,10 +224,19 @@ body {
   .needle-venue-column {
     flex: 1;
     min-height: 0;
+    position: relative;
+    z-index: 1;
   }
 
   .needle-venue-scene {
     flex: 1;
+    isolation: isolate;
+  }
+
+  .needle-room.needle-drawer-active .needle-venue-column {
+    z-index: 0;
+    contain: paint;
+    pointer-events: none;
   }
 
   .needle-sidebar {
@@ -254,7 +263,7 @@ body {
   .needle-sidebar-drawer-open {
     transform: translateY(0);
     visibility: visible;
-    z-index: 70;
+    z-index: 100;
   }
 
   .needle-sidebar:not(.needle-sidebar-drawer-open) {
@@ -271,7 +280,7 @@ body {
   .needle-mobile-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 65;
+    z-index: 90;
     border: none;
     cursor: pointer;
     background: rgba(0, 0, 0, 0.55);
@@ -363,7 +372,7 @@ body {
     left: 0;
     right: 0;
     bottom: calc(64px + env(safe-area-inset-bottom, 0px));
-    z-index: 75;
+    z-index: 100;
     border-radius: 18px 18px 0 0;
     border-top: 1px solid var(--line);
     background: linear-gradient(
@@ -390,6 +399,10 @@ body {
 
   .needle-mobile-toast {
     bottom: calc(132px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .needle-room.needle-drawer-active .needle-mobile-now-playing {
+    z-index: 50;
   }
 }
 

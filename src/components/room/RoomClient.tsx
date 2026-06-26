@@ -365,7 +365,13 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
       : `${room.name} · The booth is open · Drop a track to get moving · `;
 
   return (
-    <div className="needle-room">
+    <div
+      className={`needle-room${
+        isMobile && (mobileDrawer !== null || dropSheetOpen)
+          ? " needle-drawer-active"
+          : ""
+      }`}
+    >
       <RoomTopBar
         room={room}
         listenerCount={members.length}

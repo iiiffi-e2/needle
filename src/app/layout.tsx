@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Bricolage_Grotesque, Hanken_Grotesk } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const bricolage = Bricolage_Grotesque({
@@ -30,6 +31,7 @@ export default function RootLayout({
       <body className="min-h-full antialiased">
         {children}
         <div id="needle-overlay-root" />
+        <Analytics />
       </body>
     </html>
   );

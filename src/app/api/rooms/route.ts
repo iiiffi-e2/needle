@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { slugify } from "@/lib/utils";
+import { presenceCutoff } from "@/lib/dj-booth";
 
 const EXAMPLE_ROOMS = [
   {
@@ -62,10 +63,7 @@ export async function GET() {
         .from("room_members")
         .select("*", { count: "exact", head: true })
         .eq("room_id", room.id)
-        .gte(
-          "last_seen",
-          new Date(Date.now() - 5 * 60 * 1000).toISOString()
-        );
+        .gte("last_seen", presenceCutoff());
 
       const { count: djCount } = await admin
         .from("dj_slots")

@@ -4,6 +4,7 @@ import { createServiceClient } from "@/lib/supabase/admin";
 import { postSystemMessage } from "@/lib/playback";
 import { generateNeedlebotMessage, shouldNeedlebotSpeak } from "@/lib/needlebot";
 import { bumpRoomEnergy, ENERGY_BUMP, syncRoomEnergyDecay } from "@/lib/room-energy";
+import { presenceCutoff, processInactiveMembers } from "@/lib/dj-booth";
 
 export async function GET(
   _request: Request,
@@ -25,6 +26,8 @@ export async function GET(
   const { energy: roomEnergy, updatedAt: energyUpdatedAt } =
     await syncRoomEnergyDecay(admin, room.id);
 
+  await processInactiveMembers(admin, room.id);
+
   const [
     { data: playback },
     { data: members },
@@ -41,7 +44,7 @@ export async function GET(
       .from("room_members")
       .select("*, user:users(*)")
       .eq("room_id", room.id)
-      .gte("last_seen", new Date(Date.now() - 5 * 60 * 1000).toISOString())
+      .gte("last_seen", presenceCutoff())
       .order("joined_at"),
     admin
       .from("dj_slots")

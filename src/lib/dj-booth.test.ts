@@ -2,10 +2,20 @@ import { describe, expect, it } from "vitest";
 import {
   PRESENCE_WINDOW_MS,
   isMemberPresent,
+  presenceCutoff,
   shouldJoinWaitlist,
   pickNextWaitlistEntry,
   type WaitlistCandidate,
 } from "./dj-booth";
+
+describe("presenceCutoff", () => {
+  it("returns ISO timestamp PRESENCE_WINDOW_MS before now", () => {
+    const now = Date.parse("2026-06-26T12:00:00.000Z");
+    expect(presenceCutoff(now)).toBe(
+      new Date(now - PRESENCE_WINDOW_MS).toISOString()
+    );
+  });
+});
 
 describe("isMemberPresent", () => {
   it("returns true when last_seen is within 5 minutes", () => {

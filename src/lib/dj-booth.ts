@@ -4,6 +4,10 @@ import { bumpRoomEnergy, ENERGY_BUMP } from "@/lib/room-energy";
 
 export const PRESENCE_WINDOW_MS = 5 * 60 * 1000;
 
+export function presenceCutoff(nowMs: number = Date.now()): string {
+  return new Date(nowMs - PRESENCE_WINDOW_MS).toISOString();
+}
+
 export interface WaitlistCandidate {
   id: string;
   user_id: string;
@@ -62,7 +66,7 @@ export async function promoteFromWaitlist(
   if (!waitlist?.length) return null;
 
   const userIds = waitlist.map((w) => w.user_id);
-  const cutoff = new Date(Date.now() - PRESENCE_WINDOW_MS).toISOString();
+  const cutoff = presenceCutoff();
   const { data: members } = await supabase
     .from("room_members")
     .select("user_id, last_seen")
@@ -195,6 +199,58 @@ export async function removeDjFromBooth(
     wasPlaying,
     slotPosition: leavingSlot?.position ?? null,
   };
+}
+
+export async function processInactiveMembers(
+  supabase: SupabaseClient,
+  roomId: string
+): Promise<number> {
+  const cutoff = presenceCutoff();
+
+  const { data: inactiveMembers } = await supabase
+    .from("room_members")
+    .select("user_id, user:users(display_name)")
+    .eq("room_id", roomId)
+    .lt("last_seen", cutoff);
+
+  if (!inactiveMembers?.length) return 0;
+
+  let removed = 0;
+  for (const member of inactiveMembers) {
+    const displayName =
+      (member.user as { display_name?: string } | null)?.display_name ||
+      "Someone";
+
+    const djResult = await removeDjFromBooth(supabase, roomId, member.user_id);
+
+    if (djResult.wasOnDeck) {
+      await postSystemMessage(
+        supabase,
+        roomId,
+        `${displayName} left the room (connection lost).`
+      );
+    }
+
+    if (djResult.wasCurrentDj) {
+      const { advancePlayback } = await import("@/lib/playback");
+      await advancePlayback(
+        supabase,
+        roomId,
+        djResult.wasPlaying ? "skipped" : "ended",
+        { afterDepartedDjPosition: djResult.slotPosition ?? undefined }
+      );
+    }
+
+    await supabase
+      .from("room_members")
+      .delete()
+      .eq("room_id", roomId)
+      .eq("user_id", member.user_id);
+
+    removed++;
+  }
+
+  return removed;
 }
 
 export async function processInactiveDjs(

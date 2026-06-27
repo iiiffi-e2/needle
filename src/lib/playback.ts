@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { processInactiveDjs } from "@/lib/dj-booth";
+import { processInactiveDjs, processInactiveMembers, presenceCutoff } from "@/lib/dj-booth";
 
 export async function postSystemMessage(
   supabase: SupabaseClient,
@@ -242,10 +242,12 @@ export async function advancePlayback(
     });
 
     await processInactiveDjs(supabase, roomId);
+    await processInactiveMembers(supabase, roomId);
   }
 
   if (played) {
     await processInactiveDjs(supabase, roomId);
+    await processInactiveMembers(supabase, roomId);
   }
 
   return { advanced: played, reason };
@@ -268,7 +270,7 @@ export async function checkSkipThreshold(
     .from("room_members")
     .select("*", { count: "exact", head: true })
     .eq("room_id", roomId)
-    .gte("last_seen", new Date(Date.now() - 5 * 60 * 1000).toISOString());
+    .gte("last_seen", presenceCutoff());
 
   const { count: lameCount } = await supabase
     .from("track_votes")

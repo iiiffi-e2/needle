@@ -148,15 +148,29 @@ export function useRoomRealtime({
 
     channelRef.current = channel;
 
-    // Heartbeat presence
+    // Heartbeat presence while the tab is open (including passive listening).
     const ping = () => {
       fetch(`/api/rooms/${roomSlug}/presence`, { method: "POST" }).catch(
         () => {}
       );
     };
 
+    const leaveRoom = () => {
+      fetch(`/api/rooms/${roomSlug}/presence`, {
+        method: "DELETE",
+        keepalive: true,
+      }).catch(() => {});
+    };
+
+    const handlePageHide = (event: PageTransitionEvent) => {
+      if (event.persisted) return;
+      leaveRoom();
+    };
+
     ping();
     presenceInterval.current = setInterval(ping, 30000);
+
+    window.addEventListener("pagehide", handlePageHide);
 
     // Occasional Needlebot
     const needlebotTimer = setInterval(() => {
@@ -172,10 +186,9 @@ export function useRoomRealtime({
       supabase.removeChannel(channel);
       if (presenceInterval.current) clearInterval(presenceInterval.current);
       clearInterval(needlebotTimer);
+      window.removeEventListener("pagehide", handlePageHide);
 
-      fetch(`/api/rooms/${roomSlug}/presence`, { method: "DELETE" }).catch(
-        () => {}
-      );
+      leaveRoom();
     };
   }, [
     roomId,

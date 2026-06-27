@@ -4,6 +4,7 @@ import { createServiceClient } from "@/lib/supabase/admin";
 import { RoomClient } from "@/components/room/RoomClient";
 import { postSystemMessage } from "@/lib/playback";
 import { bumpRoomEnergy, ENERGY_BUMP, syncRoomEnergyDecay } from "@/lib/room-energy";
+import { presenceCutoff, processInactiveMembers } from "@/lib/dj-booth";
 
 interface RoomPageProps {
   params: Promise<{ slug: string }>;
@@ -67,6 +68,8 @@ export default async function RoomPage({ params }: RoomPageProps) {
       .eq("user_id", user.id);
   }
 
+  await processInactiveMembers(admin, room.id);
+
   const [
     { data: playback },
     { data: members },
@@ -86,7 +89,7 @@ export default async function RoomPage({ params }: RoomPageProps) {
       .from("room_members")
       .select("*, user:users(*)")
       .eq("room_id", room.id)
-      .gte("last_seen", new Date(Date.now() - 5 * 60 * 1000).toISOString())
+      .gte("last_seen", presenceCutoff())
       .order("joined_at"),
     admin
       .from("dj_slots")

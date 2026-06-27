@@ -3,8 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { RoomClient } from "@/components/room/RoomClient";
 import { postSystemMessage } from "@/lib/playback";
+import { checkJoinBadges } from "@/lib/badges";
 import { bumpRoomEnergy, ENERGY_BUMP, syncRoomEnergyDecay } from "@/lib/room-energy";
 import { presenceCutoff, processInactiveMembers } from "@/lib/dj-booth";
+import { recordFirstRoomJoin } from "@/lib/user-stats";
 
 interface RoomPageProps {
   params: Promise<{ slug: string }>;
@@ -46,12 +48,16 @@ export default async function RoomPage({ params }: RoomPageProps) {
       .eq("id", user.id)
       .single();
 
+    await recordFirstRoomJoin(admin, user.id, room.id);
+
     await admin.from("room_members").insert({
       room_id: room.id,
       user_id: user.id,
       role: "listener",
       last_seen: new Date().toISOString(),
     });
+
+    await checkJoinBadges(admin, user.id);
 
     await postSystemMessage(
       admin,

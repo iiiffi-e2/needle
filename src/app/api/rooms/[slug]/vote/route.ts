@@ -7,6 +7,7 @@ import {
   postSystemMessage,
 } from "@/lib/playback";
 import { bumpRoomEnergy, ENERGY_BUMP } from "@/lib/room-energy";
+import { incrementUserStat } from "@/lib/user-stats";
 
 export async function POST(
   request: Request,
@@ -113,20 +114,7 @@ export async function POST(
         ? "awesome_votes_received"
         : "lame_votes_received";
 
-    const { data: stats } = await admin
-      .from("user_stats")
-      .select(statField)
-      .eq("user_id", playback.current_dj_user_id)
-      .single();
-
-    if (stats) {
-      await admin
-        .from("user_stats")
-        .update({
-          [statField]: (stats[statField as keyof typeof stats] as number) + 1,
-        })
-        .eq("user_id", playback.current_dj_user_id);
-    }
+    await incrementUserStat(admin, playback.current_dj_user_id, statField);
   }
 
   if (voteType === "lame") {

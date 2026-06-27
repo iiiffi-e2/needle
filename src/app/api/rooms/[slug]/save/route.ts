@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { postSystemMessage } from "@/lib/playback";
+import { incrementUserStat } from "@/lib/user-stats";
 
 export async function POST(
   _request: Request,
@@ -64,34 +65,11 @@ export async function POST(
   );
 
   if (playback.current_dj_user_id && playback.current_dj_user_id !== user.id) {
-    const { data: stats } = await admin
-      .from("user_stats")
-      .select("tracks_saved_by_others")
-      .eq("user_id", playback.current_dj_user_id)
-      .single();
-
-    if (stats) {
-      await admin
-        .from("user_stats")
-        .update({ tracks_saved_by_others: stats.tracks_saved_by_others + 1 })
-        .eq("user_id", playback.current_dj_user_id);
-    }
-
-    const { data: badge } = await admin
-      .from("badges")
-      .select("id")
-      .eq("name", "First Save")
-      .single();
-
-    if (badge && stats?.tracks_saved_by_others === 0) {
-      await admin.from("user_badges").upsert(
-        {
-          user_id: playback.current_dj_user_id,
-          badge_id: badge.id,
-        },
-        { onConflict: "user_id,badge_id" }
-      );
-    }
+    await incrementUserStat(
+      admin,
+      playback.current_dj_user_id,
+      "tracks_saved_by_others"
+    );
   }
 
   return NextResponse.json({ saved: true });

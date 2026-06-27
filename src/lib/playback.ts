@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { checkTrackPlayBadges } from "@/lib/badges";
 import { processInactiveDjs, processInactiveMembers, presenceCutoff } from "@/lib/dj-booth";
+import { incrementUserStat } from "@/lib/user-stats";
 
 export async function postSystemMessage(
   supabase: SupabaseClient,
@@ -218,18 +220,11 @@ export async function advancePlayback(
         `🎵 Now playing: ${trackTitle}`
       );
 
-      const { data: stats } = await supabase
-        .from("user_stats")
-        .select("tracks_played")
-        .eq("user_id", slot.user_id)
-        .single();
-
-      if (stats) {
-        await supabase
-          .from("user_stats")
-          .update({ tracks_played: stats.tracks_played + 1 })
-          .eq("user_id", slot.user_id);
-      }
+      await incrementUserStat(supabase, slot.user_id, "tracks_played");
+      await checkTrackPlayBadges(supabase, slot.user_id, claimed.track_id, {
+        tags: room.tags,
+        vibe: room.vibe,
+      });
 
       played = true;
       break;

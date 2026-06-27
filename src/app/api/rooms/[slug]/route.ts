@@ -3,8 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { postSystemMessage } from "@/lib/playback";
 import { generateNeedlebotMessage, shouldNeedlebotSpeak } from "@/lib/needlebot";
+import { checkJoinBadges } from "@/lib/badges";
 import { bumpRoomEnergy, ENERGY_BUMP, syncRoomEnergyDecay } from "@/lib/room-energy";
 import { presenceCutoff, processInactiveMembers } from "@/lib/dj-booth";
+import { recordFirstRoomJoin } from "@/lib/user-stats";
 
 export async function GET(
   _request: Request,
@@ -164,6 +166,8 @@ export async function POST(
     .eq("id", user.id)
     .single();
 
+  const isFirstJoin = await recordFirstRoomJoin(admin, user.id, room.id);
+
   await admin.from("room_members").upsert(
     {
       room_id: room.id,
@@ -174,7 +178,10 @@ export async function POST(
     { onConflict: "room_id,user_id" }
   );
 
-  await bumpRoomEnergy(admin, room.id, ENERGY_BUMP.joinRoom);
+  if (isFirstJoin) {
+    await checkJoinBadges(admin, user.id);
+    await bumpRoomEnergy(admin, room.id, ENERGY_BUMP.joinRoom);
+  }
 
   await postSystemMessage(
     admin,

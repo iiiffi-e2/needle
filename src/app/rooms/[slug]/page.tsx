@@ -76,6 +76,7 @@ export default async function RoomPage({ params }: RoomPageProps) {
     { data: djSlots },
     { data: waitlist },
     { data: queueItems },
+    { data: recentlyPlayed },
     { data: messages },
   ] = await Promise.all([
     admin
@@ -107,6 +108,13 @@ export default async function RoomPage({ params }: RoomPageProps) {
       .eq("room_id", room.id)
       .eq("status", "queued")
       .order("created_at"),
+    admin
+      .from("queue_items")
+      .select("*, track:tracks(*), dj:users!queue_items_dj_user_id_fkey(*)")
+      .eq("room_id", room.id)
+      .eq("status", "played")
+      .order("played_at", { ascending: false })
+      .limit(5),
     admin
       .from("chat_messages")
       .select("*, user:users(*)")
@@ -158,6 +166,7 @@ export default async function RoomPage({ params }: RoomPageProps) {
         djSlots: djSlots || [],
         waitlist: waitlist || [],
         queueItems: queueItems || [],
+        recentlyPlayed: recentlyPlayed || [],
         votes,
         userVotes,
         userSaved,

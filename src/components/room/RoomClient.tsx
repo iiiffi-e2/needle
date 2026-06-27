@@ -43,6 +43,7 @@ interface RoomClientProps {
     djSlots: DjSlot[];
     waitlist: DjWaitlistEntry[];
     queueItems: QueueItem[];
+    recentlyPlayed: QueueItem[];
     votes: { awesome: number; lame: number };
     userVotes: string[];
     userSaved: boolean;
@@ -59,6 +60,7 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
   const [djSlots, setDjSlots] = useState(initialData.djSlots);
   const [waitlist, setWaitlist] = useState(initialData.waitlist);
   const [queueItems, setQueueItems] = useState(initialData.queueItems);
+  const [recentlyPlayed, setRecentlyPlayed] = useState(initialData.recentlyPlayed);
   const [votes, setVotes] = useState(initialData.votes);
   const [myVote, setMyVote] = useState<"awesome" | "lame" | null>(
     (initialData.userVotes[0] as "awesome" | "lame") || null
@@ -103,6 +105,7 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
     setDjSlots(data.djSlots);
     setWaitlist(data.waitlist);
     setQueueItems(data.queueItems);
+    setRecentlyPlayed(data.recentlyPlayed ?? []);
     setVotes(data.votes);
     setMyVote((data.userVotes?.[0] as "awesome" | "lame") || null);
     setUserSaved(data.userSaved);
@@ -538,6 +541,7 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
           room={room}
           members={members}
           queueItems={queueItems}
+          recentlyPlayed={recentlyPlayed}
           djSlots={djSlots}
           djUserIds={djUserIds}
           waitlist={waitlist}

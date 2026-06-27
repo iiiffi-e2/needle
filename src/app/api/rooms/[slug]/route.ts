@@ -34,6 +34,7 @@ export async function GET(
     { data: djSlots },
     { data: waitlist },
     { data: queueItems },
+    { data: recentlyPlayed },
   ] = await Promise.all([
     admin
       .from("room_playback")
@@ -62,6 +63,13 @@ export async function GET(
       .eq("room_id", room.id)
       .eq("status", "queued")
       .order("created_at"),
+    admin
+      .from("queue_items")
+      .select("*, track:tracks(*), dj:users!queue_items_dj_user_id_fkey(*)")
+      .eq("room_id", room.id)
+      .eq("status", "played")
+      .order("played_at", { ascending: false })
+      .limit(5),
   ]);
 
   let votes = { awesome: 0, lame: 0 };
@@ -117,6 +125,7 @@ export async function GET(
     djSlots: djSlots || [],
     waitlist: waitlist || [],
     queueItems: queueItems || [],
+    recentlyPlayed: recentlyPlayed || [],
     votes,
     userVotes,
     userSaved,

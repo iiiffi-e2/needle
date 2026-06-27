@@ -24,6 +24,7 @@ interface RoomSidePanelProps {
   room: Room;
   members: RoomMember[];
   queueItems: QueueItem[];
+  recentlyPlayed: QueueItem[];
   djSlots: { user_id: string; user?: User }[];
   djUserIds: Set<string>;
   waitlist?: DjWaitlistEntry[];
@@ -46,6 +47,7 @@ export function RoomSidePanel({
   room,
   members,
   queueItems,
+  recentlyPlayed,
   djSlots,
   djUserIds,
   waitlist = [],
@@ -405,6 +407,39 @@ export function RoomSidePanel({
                 </div>
               </div>
             ))
+          )}
+
+          {recentlyPlayed.length > 0 && (
+            <>
+              <div className="text-[11px] text-muted tracking-wide mt-2">
+                RECENTLY PLAYED
+              </div>
+              {recentlyPlayed.map((q) => (
+                <div
+                  key={q.id}
+                  className="flex items-center gap-2.5 p-2 rounded-[11px] bg-[#ffffff04] border border-[var(--ndl-line)] opacity-75"
+                >
+                  <span
+                    className="w-10 h-10 rounded-lg shrink-0"
+                    style={{
+                      background: q.track?.thumbnail_url
+                        ? `url(${q.track.thumbnail_url}) center/cover`
+                        : resolveUserColor(q.dj_user_id, q.dj?.avatar_color),
+                    }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <ScrollOnHoverText
+                      text={q.track?.title || "Unknown"}
+                      className="text-[13px] font-bold"
+                    />
+                    <div className="text-[11px] text-muted">
+                      {q.dj?.display_name || "DJ"}
+                      {q.played_at ? ` · ${timeAgo(q.played_at)}` : ""}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </>
           )}
         </div>
       )}

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { NeedleLogo } from "@/components/shared/NeedleLogo";
+import { UserMenu } from "@/components/shared/UserMenu";
 
 export async function Navbar() {
   const supabase = await createClient();
@@ -36,12 +37,10 @@ export async function Navbar() {
             >
               Create Room
             </Link>
-            <Link
-              href={`/profile/${user.id}`}
-              className="text-sm font-bold px-3 py-1 rounded-full border border-[var(--ndl-line)] hover:border-glow/40 transition-colors"
-            >
-              {profile?.display_name || "Profile"}
-            </Link>
+            <UserMenu
+              userId={user.id}
+              displayName={profile?.display_name || "Profile"}
+            />
           </>
         ) : (
           <>

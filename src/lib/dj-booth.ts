@@ -201,6 +201,57 @@ export async function removeDjFromBooth(
   };
 }
 
+export type LeaveRoomReason = "voluntary" | "inactive";
+
+export async function leaveRoomMember(
+  supabase: SupabaseClient,
+  roomId: string,
+  userId: string,
+  options: { reason?: LeaveRoomReason; displayName?: string } = {}
+): Promise<RemoveDjResult> {
+  const { reason = "voluntary", displayName: providedName } = options;
+
+  let displayName = providedName;
+  if (!displayName) {
+    const { data: user } = await supabase
+      .from("users")
+      .select("display_name")
+      .eq("id", userId)
+      .single();
+    displayName = user?.display_name || "Someone";
+  }
+
+  const djResult = await removeDjFromBooth(supabase, roomId, userId);
+
+  if (djResult.wasOnDeck) {
+    const message =
+      reason === "inactive"
+        ? `${displayName} left the room (connection lost).`
+        : djResult.wasPlaying
+          ? `${displayName} left the room — track cut short.`
+          : `${displayName} left the room.`;
+    await postSystemMessage(supabase, roomId, message);
+  }
+
+  if (djResult.wasCurrentDj) {
+    const { advancePlayback } = await import("@/lib/playback");
+    await advancePlayback(
+      supabase,
+      roomId,
+      djResult.wasPlaying ? "skipped" : "ended",
+      { afterDepartedDjPosition: djResult.slotPosition ?? undefined }
+    );
+  }
+
+  await supabase
+    .from("room_members")
+    .delete()
+    .eq("room_id", roomId)
+    .eq("user_id", userId);
+
+  return djResult;
+}
+
 export async function processInactiveMembers(
   supabase: SupabaseClient,
   roomId: string
@@ -221,31 +272,10 @@ export async function processInactiveMembers(
       (member.user as { display_name?: string } | null)?.display_name ||
       "Someone";
 
-    const djResult = await removeDjFromBooth(supabase, roomId, member.user_id);
-
-    if (djResult.wasOnDeck) {
-      await postSystemMessage(
-        supabase,
-        roomId,
-        `${displayName} left the room (connection lost).`
-      );
-    }
-
-    if (djResult.wasCurrentDj) {
-      const { advancePlayback } = await import("@/lib/playback");
-      await advancePlayback(
-        supabase,
-        roomId,
-        djResult.wasPlaying ? "skipped" : "ended",
-        { afterDepartedDjPosition: djResult.slotPosition ?? undefined }
-      );
-    }
-
-    await supabase
-      .from("room_members")
-      .delete()
-      .eq("room_id", roomId)
-      .eq("user_id", member.user_id);
+    await leaveRoomMember(supabase, roomId, member.user_id, {
+      reason: "inactive",
+      displayName,
+    });
 
     removed++;
   }

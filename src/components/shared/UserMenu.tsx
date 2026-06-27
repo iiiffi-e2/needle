@@ -12,6 +12,7 @@ interface UserMenuProps {
   displayName: string;
   variant?: "pill" | "avatar";
   avatarColor?: string | null;
+  roomSlug?: string;
 }
 
 export function UserMenu({
@@ -19,6 +20,7 @@ export function UserMenu({
   displayName,
   variant = "pill",
   avatarColor,
+  roomSlug,
 }: UserMenuProps) {
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -48,6 +50,11 @@ export function UserMenu({
 
   const handleSignOut = async () => {
     setSigningOut(true);
+    if (roomSlug) {
+      await fetch(`/api/rooms/${roomSlug}/presence`, {
+        method: "DELETE",
+      }).catch(() => {});
+    }
     const supabase = createClient();
     await supabase.auth.signOut();
     setOpen(false);

@@ -54,14 +54,23 @@ export async function advancePlayback(
     .eq("room_id", roomId)
     .single();
 
+  let finishedCurrentTrack = false;
   if (playback?.current_queue_item_id) {
-    await supabase
+    const { data: finished } = await supabase
       .from("queue_items")
       .update({
         status: reason === "skipped" ? "skipped" : "played",
         played_at: new Date().toISOString(),
       })
-      .eq("id", playback.current_queue_item_id);
+      .eq("id", playback.current_queue_item_id)
+      .eq("status", "playing")
+      .select("id")
+      .maybeSingle();
+
+    if (!finished) {
+      return { advanced: false, reason: "already_advanced" };
+    }
+    finishedCurrentTrack = true;
   }
 
   const { data: djSlots } = await supabase
@@ -150,6 +159,18 @@ export async function advancePlayback(
   const slots = refreshedSlots || djSlots;
   let played = false;
 
+  if (!finishedCurrentTrack) {
+    const { data: livePlayback } = await supabase
+      .from("room_playback")
+      .select("current_track_id")
+      .eq("room_id", roomId)
+      .maybeSingle();
+
+    if (livePlayback?.current_track_id) {
+      return { advanced: false, reason: "already_playing" };
+    }
+  }
+
   for (let attempt = 0; attempt < slots.length; attempt++) {
     const slotIndex = (startIndex + attempt) % slots.length;
     const slot = slots[slotIndex];
@@ -165,22 +186,29 @@ export async function advancePlayback(
       .maybeSingle();
 
     if (queueItem) {
-      await supabase
+      const { data: claimed } = await supabase
         .from("queue_items")
         .update({ status: "playing" })
-        .eq("id", queueItem.id);
+        .eq("id", queueItem.id)
+        .eq("status", "queued")
+        .select("*, track:tracks(*)")
+        .maybeSingle();
+
+      if (!claimed) {
+        continue;
+      }
 
       await supabase.from("room_playback").upsert({
         room_id: roomId,
-        current_track_id: queueItem.track_id,
-        current_queue_item_id: queueItem.id,
+        current_track_id: claimed.track_id,
+        current_queue_item_id: claimed.id,
         current_dj_user_id: slot.user_id,
         started_at: new Date().toISOString(),
         is_paused: false,
         updated_at: new Date().toISOString(),
       });
 
-      const trackTitle = queueItem.track?.title || "a track";
+      const trackTitle = claimed.track?.title || "a track";
       const djName =
         (slot as { user?: { display_name?: string } }).user?.display_name ||
         "A DJ";

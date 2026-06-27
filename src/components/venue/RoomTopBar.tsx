@@ -106,6 +106,7 @@ export function RoomTopBar({
           displayName={currentUser.display_name || "Profile"}
           variant="avatar"
           avatarColor={currentUser.avatar_color}
+          roomSlug={room.slug}
         />
       )}
     </header>

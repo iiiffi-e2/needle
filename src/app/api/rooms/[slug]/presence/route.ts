@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
-import { processInactiveMembers } from "@/lib/dj-booth";
+import { leaveRoomMember, processInactiveMembers } from "@/lib/dj-booth";
 
 export async function POST(
   _request: Request,
@@ -59,11 +59,7 @@ export async function DELETE(
     .single();
 
   if (room) {
-    await admin
-      .from("room_members")
-      .delete()
-      .eq("room_id", room.id)
-      .eq("user_id", user.id);
+    await leaveRoomMember(admin, room.id, user.id);
   }
 
   return NextResponse.json({ ok: true });

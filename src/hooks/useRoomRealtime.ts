@@ -36,6 +36,7 @@ export function useRoomRealtime({
   const supabase = createClient();
   const presenceInterval = useRef<NodeJS.Timeout | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const effectGenerationRef = useRef(0);
 
   const refreshPlayback = useCallback(onPlaybackChange, [onPlaybackChange]);
   const refreshMembers = useCallback(onMembersChange, [onMembersChange]);
@@ -49,6 +50,19 @@ export function useRoomRealtime({
   );
 
   useEffect(() => {
+    const effectId = ++effectGenerationRef.current;
+    const pageUnloadingRef = { current: false };
+
+    const markPageUnload = (event: Event) => {
+      if ("persisted" in event && (event as PageTransitionEvent).persisted) {
+        return;
+      }
+      pageUnloadingRef.current = true;
+    };
+
+    window.addEventListener("beforeunload", markPageUnload);
+    window.addEventListener("pagehide", markPageUnload);
+
     const channel = supabase
       .channel(`room:${roomId}`)
       .on(
@@ -162,15 +176,8 @@ export function useRoomRealtime({
       }).catch(() => {});
     };
 
-    const handlePageHide = (event: PageTransitionEvent) => {
-      if (event.persisted) return;
-      leaveRoom();
-    };
-
     ping();
     presenceInterval.current = setInterval(ping, 30000);
-
-    window.addEventListener("pagehide", handlePageHide);
 
     // Occasional Needlebot
     const needlebotTimer = setInterval(() => {
@@ -186,9 +193,16 @@ export function useRoomRealtime({
       supabase.removeChannel(channel);
       if (presenceInterval.current) clearInterval(presenceInterval.current);
       clearInterval(needlebotTimer);
-      window.removeEventListener("pagehide", handlePageHide);
+      window.removeEventListener("beforeunload", markPageUnload);
+      window.removeEventListener("pagehide", markPageUnload);
 
-      leaveRoom();
+      // Only leave on in-app navigation — not refresh or tab close.
+      // Refresh/close stops heartbeats; inactive cleanup handles those after 5 min.
+      window.setTimeout(() => {
+        if (effectId !== effectGenerationRef.current) return;
+        if (pageUnloadingRef.current) return;
+        leaveRoom();
+      }, 0);
     };
   }, [
     roomId,

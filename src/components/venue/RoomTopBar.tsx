@@ -3,9 +3,8 @@
 import Link from "next/link";
 import type { Room, User } from "@/lib/types";
 import { NeedleLogo } from "@/components/shared/NeedleLogo";
+import { UserMenu } from "@/components/shared/UserMenu";
 import { EnergyMeter } from "./EnergyMeter";
-import { getInitials } from "@/lib/utils";
-import { resolveUserColor } from "@/lib/design-tokens";
 
 interface RoomTopBarProps {
   room: Room;
@@ -102,16 +101,12 @@ export function RoomTopBar({
       </div>
 
       {currentUser && (
-        <Link
-          href={`/profile/${currentUser.id}`}
-          className="w-[34px] h-[34px] rounded-full shrink-0 flex items-center justify-center font-extrabold text-[13px] text-[#1c1414]"
-          style={{
-            background: `radial-gradient(circle at 38% 26%, #ffffff8c, #ffffff00 46%), ${resolveUserColor(currentUser.id, currentUser.avatar_color)}`,
-            boxShadow: `0 0 0 2px var(--bg1), 0 0 14px ${resolveUserColor(currentUser.id, currentUser.avatar_color)}88`,
-          }}
-        >
-          {getInitials(currentUser.display_name)}
-        </Link>
+        <UserMenu
+          userId={currentUser.id}
+          displayName={currentUser.display_name || "Profile"}
+          variant="avatar"
+          avatarColor={currentUser.avatar_color}
+        />
       )}
     </header>
   );

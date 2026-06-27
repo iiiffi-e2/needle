@@ -4,13 +4,22 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { getInitials } from "@/lib/utils";
+import { resolveUserColor } from "@/lib/design-tokens";
 
 interface UserMenuProps {
   userId: string;
   displayName: string;
+  variant?: "pill" | "avatar";
+  avatarColor?: string | null;
 }
 
-export function UserMenu({ userId, displayName }: UserMenuProps) {
+export function UserMenu({
+  userId,
+  displayName,
+  variant = "pill",
+  avatarColor,
+}: UserMenuProps) {
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -46,6 +55,8 @@ export function UserMenu({ userId, displayName }: UserMenuProps) {
     router.refresh();
   };
 
+  const color = resolveUserColor(userId, avatarColor);
+
   return (
     <div ref={menuRef} className="relative">
       <button
@@ -53,15 +64,28 @@ export function UserMenu({ userId, displayName }: UserMenuProps) {
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
         aria-haspopup="menu"
-        className="text-sm font-bold px-3 py-1 rounded-full border border-[var(--ndl-line)] hover:border-glow/40 transition-colors"
+        aria-label={`Account menu for ${displayName}`}
+        className={
+          variant === "avatar"
+            ? "w-[34px] h-[34px] rounded-full shrink-0 flex items-center justify-center font-extrabold text-[13px] text-[#1c1414] cursor-pointer"
+            : "text-sm font-bold px-3 py-1 rounded-full border border-[var(--ndl-line)] hover:border-glow/40 transition-colors cursor-pointer"
+        }
+        style={
+          variant === "avatar"
+            ? {
+                background: `radial-gradient(circle at 38% 26%, #ffffff8c, #ffffff00 46%), ${color}`,
+                boxShadow: `0 0 0 2px var(--bg1), 0 0 14px ${color}88`,
+              }
+            : undefined
+        }
       >
-        {displayName}
+        {variant === "avatar" ? getInitials(displayName) : displayName}
       </button>
 
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full mt-2 min-w-[160px] py-1.5 rounded-xl border border-[var(--ndl-line)] bg-[var(--ndl-bg1)] shadow-[0_8px_24px_rgba(0,0,0,0.35)] z-50"
+          className="absolute right-0 top-full mt-2 min-w-[160px] py-1.5 rounded-xl border border-[var(--ndl-line)] bg-[var(--ndl-bg1)] shadow-[0_8px_24px_rgba(0,0,0,0.35)] z-[200]"
         >
           <Link
             href={`/profile/${userId}`}

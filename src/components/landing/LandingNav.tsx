@@ -1,13 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { EmailCapture } from "./EmailCapture";
+import { UserMenu } from "@/components/shared/UserMenu";
 
 interface LandingNavProps {
   isLoggedIn?: boolean;
+  userId?: string;
+  displayName?: string;
 }
 
-export function LandingNav({ isLoggedIn = false }: LandingNavProps) {
+export function LandingNav({
+  isLoggedIn = false,
+  userId,
+  displayName,
+}: LandingNavProps) {
   const scrollTo = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
   };
@@ -56,7 +62,12 @@ export function LandingNav({ isLoggedIn = false }: LandingNavProps) {
         </button>
       </nav>
 
-      {isLoggedIn ? (
+      {isLoggedIn && userId ? (
+        <UserMenu
+          userId={userId}
+          displayName={displayName || "Profile"}
+        />
+      ) : isLoggedIn ? (
         <Link
           href="/rooms"
           className="text-sm font-semibold text-[var(--txt)] hover:text-[var(--glow2)] transition-colors"

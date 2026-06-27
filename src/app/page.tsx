@@ -7,5 +7,21 @@ export default async function HomePage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  return <LandingPage isLoggedIn={!!user} />;
+  let displayName: string | undefined;
+  if (user) {
+    const { data: profile } = await supabase
+      .from("users")
+      .select("display_name")
+      .eq("id", user.id)
+      .single();
+    displayName = profile?.display_name ?? undefined;
+  }
+
+  return (
+    <LandingPage
+      isLoggedIn={!!user}
+      userId={user?.id}
+      displayName={displayName}
+    />
+  );
 }

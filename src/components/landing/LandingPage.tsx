@@ -13,6 +13,8 @@ import "./landing.css";
 
 interface LandingPageProps {
   isLoggedIn?: boolean;
+  userId?: string;
+  displayName?: string;
   hero?: "venue" | "statement";
 }
 
@@ -24,7 +26,12 @@ function formatLiveCount(totalListeners: number): string {
   return "1,204";
 }
 
-export function LandingPage({ isLoggedIn = false, hero = "venue" }: LandingPageProps) {
+export function LandingPage({
+  isLoggedIn = false,
+  userId,
+  displayName,
+  hero = "venue",
+}: LandingPageProps) {
   const [rooms, setRooms] = useState<RoomWithStats[]>([]);
   const [liveCount, setLiveCount] = useState("1,204");
 
@@ -48,7 +55,11 @@ export function LandingPage({ isLoggedIn = false, hero = "venue" }: LandingPageP
   return (
     <div className="landing-page ndl-scroll min-h-screen w-full overflow-x-hidden">
       <div className="mx-auto w-full max-w-[1440px]">
-        <LandingNav isLoggedIn={isLoggedIn} />
+        <LandingNav
+          isLoggedIn={isLoggedIn}
+          userId={userId}
+          displayName={displayName}
+        />
         {hero === "statement" ? (
           <HeroStatement liveCount={liveCount} isLoggedIn={isLoggedIn} />
         ) : (

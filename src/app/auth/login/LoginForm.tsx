@@ -13,7 +13,7 @@ export default function LoginForm() {
   const [error, setError] = useState("");
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") || "/";
+  const redirect = searchParams.get("redirect") || "/rooms";
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -24,7 +24,8 @@ npm install
 1. Create a project at [supabase.com](https://supabase.com)
 2. Run the migration in `supabase/migrations/001_initial_schema.sql` via the SQL Editor
 3. Run `supabase/seed.sql` to seed badges
-4. Enable Realtime for: `chat_messages`, `room_members`, `room_playback`, `track_votes`, `dj_slots`, `dj_waitlist`, `queue_items`
+4. Run `supabase/migrations/005_friendships.sql` after the other migrations
+5. Enable Realtime for: `chat_messages`, `room_members`, `room_playback`, `track_votes`, `dj_slots`, `dj_waitlist`, `queue_items`, `relationships`, `room_invites`
 
 ### 3. YouTube Data API (track search)
 
@@ -70,6 +71,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `/rooms/[slug]` | Live listening room |
 | `/rooms/create` | Create a new room |
 | `/profile/[id]` | User profile with stats and saved tracks |
+| `/friends` | Friends list, requests, and user search |
 | `/auth/login` | Sign in |
 | `/auth/signup` | Create account |
 
@@ -81,6 +83,7 @@ Open [http://localhost:3000](http://localhost:3000).
 - **Real-time chat** with system messages and Needlebot
 - **Presence** — see who's in the room
 - **Profiles** — stats, badges, saved tracks
+- **Friends** — send and accept requests, search users, invite friends to rooms
 
 ## Deploy to Vercel
 

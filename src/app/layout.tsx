@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Hanken_Grotesk } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { AuthWatcher } from "@/components/shared/AuthWatcher";
 import { InstallPromptGate } from "@/components/shared/InstallPromptGate";
 import { ServiceWorkerRegister } from "@/components/shared/ServiceWorkerRegister";
 import "./globals.css";
@@ -52,6 +53,7 @@ export default function RootLayout({
     <html lang="en" className={`${bricolage.variable} ${hanken.variable} h-full`}>
       <body className="min-h-full antialiased">
         {children}
+        <AuthWatcher />
         <InstallPromptGate />
         <ServiceWorkerRegister />
         <div id="needle-overlay-root" />

@@ -17,6 +17,7 @@ import { ScrollOnHoverText } from "@/components/shared/ScrollOnHoverText";
 import { SystemMessage } from "@/components/shared/SystemMessage";
 import { NeedlebotMessage } from "@/components/shared/NeedlebotMessage";
 import { TrackSearchInput } from "@/components/shared/TrackSearchInput";
+import { ProfileLink } from "@/components/shared/ProfileLink";
 
 type TabId = "chat" | "queue" | "info" | "crate";
 
@@ -320,15 +321,22 @@ export function RoomSidePanel({
                 : "#a98bff";
               return (
                 <div key={m.id} className="flex gap-2">
-                  <span
-                    className="w-[26px] h-[26px] shrink-0 rounded-full shadow-[0_0_0_2px_var(--ndl-bg1)]"
-                    style={{ background: color }}
-                  />
+                  <ProfileLink userId={m.user_id}>
+                    <span
+                      className="w-[26px] h-[26px] shrink-0 rounded-full shadow-[0_0_0_2px_var(--ndl-bg1)] cursor-pointer hover:ring-2 hover:ring-glow/40 transition-shadow"
+                      style={{ background: color }}
+                    />
+                  </ProfileLink>
                   <div className="min-w-0">
                     <div className="text-[11px] mb-0.5">
-                      <b className="font-bold" style={{ color: "var(--txt)" }}>
-                        {m.user?.display_name || "Anonymous"}
-                      </b>{" "}
+                      <ProfileLink
+                        userId={m.user_id}
+                        className="cursor-pointer hover:text-glow-soft transition-colors"
+                      >
+                        <b className="font-bold" style={{ color: "var(--txt)" }}>
+                          {m.user?.display_name || "Anonymous"}
+                        </b>
+                      </ProfileLink>{" "}
                       <span
                         style={{ color: "var(--sub)", fontSize: 10 }}
                         suppressHydrationWarning
@@ -632,7 +640,13 @@ export function RoomSidePanel({
                       key={entry.id}
                       className="text-[12.5px] text-[var(--txt)]"
                     >
-                      {index + 1}. {entry.user?.display_name || "Anonymous"}
+                      {index + 1}.{" "}
+                      <ProfileLink
+                        userId={entry.user_id}
+                        className="hover:text-glow-soft transition-colors"
+                      >
+                        {entry.user?.display_name || "Anonymous"}
+                      </ProfileLink>
                     </li>
                   ))}
               </ol>
@@ -644,16 +658,17 @@ export function RoomSidePanel({
             </div>
             <div className="flex flex-wrap gap-1.5">
               {floorMembers.map((m) => (
-                <span
+                <ProfileLink
                   key={m.id}
-                  className="w-[30px] h-[30px] rounded-full shadow-[0_0_0_2px_var(--ndl-bg1)]"
+                  userId={m.user_id}
+                  title={m.user?.display_name || "View profile"}
+                  className="w-[30px] h-[30px] rounded-full shadow-[0_0_0_2px_var(--ndl-bg1)] cursor-pointer hover:ring-2 hover:ring-glow/40 transition-shadow block"
                   style={{
                     background: resolveUserColor(
                       m.user_id,
                       m.user?.avatar_color
                     ),
                   }}
-                  title={m.user?.display_name || undefined}
                 />
               ))}
             </div>

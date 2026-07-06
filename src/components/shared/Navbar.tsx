@@ -32,6 +32,12 @@ export async function Navbar() {
         {user ? (
           <>
             <Link
+              href="/friends"
+              className="text-sm text-muted hover:text-glow-soft transition-colors font-medium"
+            >
+              Friends
+            </Link>
+            <Link
               href="/rooms/create"
               className="text-sm text-muted hover:text-glow-soft transition-colors font-medium"
             >

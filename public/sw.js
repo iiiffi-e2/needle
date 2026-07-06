@@ -1,4 +1,4 @@
-const CACHE_NAME = "needle-v1";
+const CACHE_NAME = "needle-v2";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());

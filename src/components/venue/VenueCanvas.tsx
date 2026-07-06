@@ -9,6 +9,7 @@ import {
 } from "@/lib/design-tokens";
 import type { CrowdHeadReaction } from "@/lib/crowd-reactions";
 import { getInitials, truncateDisplayName } from "@/lib/utils";
+import { ProfileLink } from "@/components/shared/ProfileLink";
 
 const CrowdMemberBlob = memo(function CrowdMemberBlob({
   color,
@@ -148,28 +149,39 @@ function DeckSlot({
 
   if (occupant?.user) {
     const deckBlobSize = 60;
+    const blob = (
+      <VinylBlob
+        variant={isCurrentUser ? "you" : "crowd"}
+        color={resolveUserColor(
+          occupant.user_id,
+          occupant.user?.avatar_color
+        )}
+        size={deckBlobSize}
+        dance
+        showRing
+        initials={
+          isCurrentUser ? getInitials(occupant.user.display_name) : undefined
+        }
+      />
+    );
+
     return (
       <div className="flex flex-col items-center pointer-events-auto">
         <div className="relative">
           <HeadReactionGlyphs reactions={userReactions} size={deckBlobSize} />
-          <OwnDeckBlobTap
-            enabled={isCurrentUser}
-            onTap={onTapOwnBlob}
-          >
-            <VinylBlob
-              variant={isCurrentUser ? "you" : "crowd"}
-              color={resolveUserColor(
-                occupant.user_id,
-                occupant.user?.avatar_color
-              )}
-              size={deckBlobSize}
-              dance
-              showRing
-              initials={
-                isCurrentUser ? getInitials(occupant.user.display_name) : undefined
-              }
-            />
-          </OwnDeckBlobTap>
+          {isCurrentUser ? (
+            <OwnDeckBlobTap enabled onTap={onTapOwnBlob}>
+              {blob}
+            </OwnDeckBlobTap>
+          ) : (
+            <ProfileLink
+              userId={occupant.user_id}
+              title={`${occupant.user.display_name || "DJ"} — view profile`}
+              className="block cursor-pointer hover:opacity-90 transition-opacity"
+            >
+              {blob}
+            </ProfileLink>
+          )}
         </div>
         <div className="mt-2 text-center">
           <BlobNameLabel
@@ -634,21 +646,37 @@ export function VenueCanvas({
                 reactions={reactionsByUser.get(currentDj.id) ?? []}
                 size={66}
               />
-              <OwnDeckBlobTap
-                enabled={currentDj.id === currentUserId}
-                onTap={requestStepOff}
-              >
-                <VinylBlob
-                  variant="dj"
-                  color={resolveUserColor(
-                    currentDj.id,
-                    currentDj.avatar_color
-                  )}
-                  size={66}
-                  dance={!isDjSleeping}
-                  showRing
-                />
-              </OwnDeckBlobTap>
+              {currentDj.id === currentUserId ? (
+                <OwnDeckBlobTap enabled onTap={requestStepOff}>
+                  <VinylBlob
+                    variant="dj"
+                    color={resolveUserColor(
+                      currentDj.id,
+                      currentDj.avatar_color
+                    )}
+                    size={66}
+                    dance={!isDjSleeping}
+                    showRing
+                  />
+                </OwnDeckBlobTap>
+              ) : (
+                <ProfileLink
+                  userId={currentDj.id}
+                  title={`${currentDj.display_name || "DJ"} — view profile`}
+                  className="block cursor-pointer hover:opacity-90 transition-opacity"
+                >
+                  <VinylBlob
+                    variant="dj"
+                    color={resolveUserColor(
+                      currentDj.id,
+                      currentDj.avatar_color
+                    )}
+                    size={66}
+                    dance={!isDjSleeping}
+                    showRing
+                  />
+                </ProfileLink>
+              )}
             </div>
             <div className="mt-2 text-center pointer-events-auto">
               <BlobNameLabel
@@ -835,7 +863,7 @@ export function VenueCanvas({
         return (
           <div
             key={member.id}
-            className="needle-crowd-member absolute flex flex-col items-center pointer-events-auto cursor-default"
+            className="needle-crowd-member absolute flex flex-col items-center pointer-events-auto"
             style={{
               left: `${c.leftPct}%`,
               top: `${c.topPct}%`,
@@ -843,19 +871,43 @@ export function VenueCanvas({
               zIndex: c.zIndex,
             }}
           >
-            <div className="relative" style={{ width: c.size }}>
-              <HeadReactionGlyphs reactions={userReactions} size={c.size} />
-              <CrowdMemberBlob
-                color={resolveUserColor(c.userId, userColors.get(c.userId))}
-                size={c.size}
-                dance={c.dance}
-                animDuration={c.animDuration}
-              />
-            </div>
-            <BlobNameLabel
-              name={displayName}
-              maxWidth={Math.max(56, c.size + 12)}
-            />
+            {member.user_id === currentUserId ? (
+              <>
+                <div className="relative" style={{ width: c.size }}>
+                  <HeadReactionGlyphs reactions={userReactions} size={c.size} />
+                  <CrowdMemberBlob
+                    color={resolveUserColor(c.userId, userColors.get(c.userId))}
+                    size={c.size}
+                    dance={c.dance}
+                    animDuration={c.animDuration}
+                  />
+                </div>
+                <BlobNameLabel
+                  name={displayName}
+                  maxWidth={Math.max(56, c.size + 12)}
+                />
+              </>
+            ) : (
+              <ProfileLink
+                userId={member.user_id}
+                title={`${displayName} — view profile`}
+                className="flex flex-col items-center cursor-pointer hover:opacity-90 transition-opacity"
+              >
+                <div className="relative" style={{ width: c.size }}>
+                  <HeadReactionGlyphs reactions={userReactions} size={c.size} />
+                  <CrowdMemberBlob
+                    color={resolveUserColor(c.userId, userColors.get(c.userId))}
+                    size={c.size}
+                    dance={c.dance}
+                    animDuration={c.animDuration}
+                  />
+                </div>
+                <BlobNameLabel
+                  name={displayName}
+                  maxWidth={Math.max(56, c.size + 12)}
+                />
+              </ProfileLink>
+            )}
           </div>
         );
       })}

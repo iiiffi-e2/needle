@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { UserAvatar } from "@/components/shared/UserAvatar";
+import { useFriendRealtime } from "@/hooks/useFriendRealtime";
 import type {
   FriendWithPresence,
   Relationship,
@@ -28,7 +29,11 @@ async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> 
   return payload as T;
 }
 
-export function FriendsClient() {
+interface FriendsClientProps {
+  currentUserId?: string;
+}
+
+export function FriendsClient({ currentUserId }: FriendsClientProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabId>("friends");
   const [friends, setFriends] = useState<FriendWithPresence[]>([]);
@@ -49,7 +54,7 @@ export function FriendsClient() {
     [requests]
   );
 
-  const loadFriends = async () => {
+  const loadFriends = useCallback(async () => {
     setFriendsLoading(true);
     try {
       const data = await fetchJson<FriendWithPresence[]>("/api/friends");
@@ -61,9 +66,9 @@ export function FriendsClient() {
     } finally {
       setFriendsLoading(false);
     }
-  };
+  }, []);
 
-  const loadRequests = async () => {
+  const loadRequests = useCallback(async () => {
     setRequestsLoading(true);
     try {
       const data = await fetchJson<RequestsResponse>("/api/friends/requests");
@@ -75,11 +80,26 @@ export function FriendsClient() {
     } finally {
       setRequestsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     void Promise.all([loadFriends(), loadRequests()]);
-  }, []);
+  }, [loadFriends, loadRequests]);
+
+  const refreshFromRealtime = useCallback(() => {
+    if (activeTab === "friends") {
+      void loadFriends();
+      return;
+    }
+    if (activeTab === "requests") {
+      void loadRequests();
+      return;
+    }
+    // Keep request counts fresh while searching.
+    void loadRequests();
+  }, [activeTab, loadFriends, loadRequests]);
+
+  useFriendRealtime(currentUserId, refreshFromRealtime);
 
   useEffect(() => {
     const q = searchQuery.trim();

@@ -25,7 +25,7 @@ export default async function FriendsPage() {
             Keep up with your people, respond to requests, and find new listeners.
           </p>
         </div>
-        <FriendsClient />
+        <FriendsClient currentUserId={user.id} />
       </main>
     </div>
   );

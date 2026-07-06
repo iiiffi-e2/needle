@@ -118,7 +118,7 @@ export function ChatPanel({
                   <span className="text-sm font-medium">
                     {msg.user?.display_name || "Anonymous"}
                   </span>
-                  <span className="text-xs text-muted">
+                  <span className="text-xs text-muted" suppressHydrationWarning>
                     {timeAgo(msg.created_at)}
                   </span>
                 </div>

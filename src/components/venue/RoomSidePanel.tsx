@@ -329,7 +329,10 @@ export function RoomSidePanel({
                       <b className="font-bold" style={{ color: "var(--txt)" }}>
                         {m.user?.display_name || "Anonymous"}
                       </b>{" "}
-                      <span style={{ color: "var(--sub)", fontSize: 10 }}>
+                      <span
+                        style={{ color: "var(--sub)", fontSize: 10 }}
+                        suppressHydrationWarning
+                      >
                         {timeAgo(m.created_at)}
                       </span>
                     </div>
@@ -434,7 +437,11 @@ export function RoomSidePanel({
                     />
                     <div className="text-[11px] text-muted">
                       {q.dj?.display_name || "DJ"}
-                      {q.played_at ? ` · ${timeAgo(q.played_at)}` : ""}
+                      {q.played_at ? (
+                        <span suppressHydrationWarning>{` · ${timeAgo(q.played_at)}`}</span>
+                      ) : (
+                        ""
+                      )}
                     </div>
                   </div>
                 </div>

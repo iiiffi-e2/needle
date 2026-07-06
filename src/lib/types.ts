@@ -158,3 +158,48 @@ export interface VoteCounts {
   awesome: number;
   lame: number;
 }
+
+export type RelationshipStatus = "pending" | "accepted" | "declined" | "blocked";
+
+export type RelationshipHint =
+  | "none"
+  | "pending_out"
+  | "pending_in"
+  | "friends"
+  | "blocked"
+  | "blocked_by_them";
+
+export interface Relationship {
+  id: string;
+  user_a_id: string;
+  user_b_id: string;
+  status: RelationshipStatus;
+  requested_by: string;
+  declined_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RoomInvite {
+  id: string;
+  room_id: string;
+  from_user_id: string;
+  to_user_id: string;
+  status: "pending" | "dismissed";
+  created_at: string;
+  room?: Pick<Room, "id" | "name" | "slug">;
+  from_user?: User;
+}
+
+export interface FriendPresence {
+  roomId: string | null;
+  roomName: string | null;
+  roomSlug: string | null;
+  isPrivate: boolean;
+  canJoin: boolean;
+}
+
+export interface FriendWithPresence {
+  user: User;
+  presence: FriendPresence;
+}

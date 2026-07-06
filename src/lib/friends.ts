@@ -135,7 +135,7 @@ export async function sendFriendRequest(
     toId,
     relationship: existing,
   });
-  if (!validation.ok) {
+  if (validation.ok === false) {
     throw new FriendRequestError(validation.status, validation.message);
   }
 
@@ -381,12 +381,23 @@ export async function friendPresence(
 
   for (const member of memberships ?? []) {
     if (result.has(member.user_id)) continue;
-    const room = member.room as {
-      id: string;
-      name: string;
-      slug: string;
-      is_private: boolean;
-    } | null;
+    const roomRelation = member.room as
+      | {
+          id: string;
+          name: string;
+          slug: string;
+          is_private: boolean;
+        }
+      | Array<{
+          id: string;
+          name: string;
+          slug: string;
+          is_private: boolean;
+        }>
+      | null;
+    const room = Array.isArray(roomRelation)
+      ? (roomRelation[0] ?? null)
+      : roomRelation;
     if (!room) {
       result.set(member.user_id, offlinePresence());
       continue;
@@ -451,9 +462,6 @@ export async function sendRoomInvite(
   const rel = await getRelationship(admin, fromId, toId);
   if (!rel || rel.status !== "accepted") {
     throw new FriendRequestError(403, "Can only invite friends");
-  }
-  if (rel.status === "blocked") {
-    throw new FriendRequestError(403, "Unable to send invite");
   }
 
   const { data, error } = await admin

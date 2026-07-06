@@ -422,6 +422,10 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
   const deckJoinMode: "deck" | "waitlist" =
     djSlots.length >= room.max_djs || waitlistCount > 0 ? "waitlist" : "deck";
   const currentUser = members.find((m) => m.user_id === currentUserId)?.user;
+  const memberUserIds = useMemo(
+    () => new Set(members.map((member) => member.user_id)),
+    [members]
+  );
 
   const currentDjId = playback?.current_dj_user_id || null;
   const sideDjs = useMemo((): [DjSlot | null, DjSlot | null] => {
@@ -483,6 +487,7 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
         listenerCount={members.length}
         energy={energy}
         currentUser={currentUser}
+        memberUserIds={memberUserIds}
       />
 
       <div className="needle-room-body">

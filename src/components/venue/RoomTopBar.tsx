@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { Room, User } from "@/lib/types";
 import { NeedleLogo } from "@/components/shared/NeedleLogo";
 import { UserMenu } from "@/components/shared/UserMenu";
+import { InviteFriendsButton } from "./InviteFriendsButton";
 import { EnergyMeter } from "./EnergyMeter";
 
 interface RoomTopBarProps {
@@ -11,6 +12,7 @@ interface RoomTopBarProps {
   listenerCount: number;
   energy: number;
   currentUser?: User | null;
+  memberUserIds?: Set<string>;
 }
 
 export function RoomTopBar({
@@ -18,6 +20,7 @@ export function RoomTopBar({
   listenerCount,
   energy,
   currentUser,
+  memberUserIds,
 }: RoomTopBarProps) {
   return (
     <header
@@ -101,13 +104,20 @@ export function RoomTopBar({
       </div>
 
       {currentUser && (
-        <UserMenu
-          userId={currentUser.id}
-          displayName={currentUser.display_name || "Profile"}
-          variant="avatar"
-          avatarColor={currentUser.avatar_color}
-          roomSlug={room.slug}
-        />
+        <>
+          <InviteFriendsButton
+            roomSlug={room.slug}
+            currentUserId={currentUser.id}
+            memberUserIds={memberUserIds}
+          />
+          <UserMenu
+            userId={currentUser.id}
+            displayName={currentUser.display_name || "Profile"}
+            variant="avatar"
+            avatarColor={currentUser.avatar_color}
+            roomSlug={room.slug}
+          />
+        </>
       )}
     </header>
   );

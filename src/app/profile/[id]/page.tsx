@@ -1,10 +1,13 @@
 import { notFound } from "next/navigation";
 import { Navbar } from "@/components/shared/Navbar";
 import { UserAvatar } from "@/components/shared/UserAvatar";
+import { FriendActions } from "@/components/profile/FriendActions";
 import { ProfileColorSettings } from "@/components/profile/ProfileColorSettings";
+import { canonicalPair } from "@/lib/friends";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { formatDuration } from "@/lib/utils";
+import type { Relationship } from "@/lib/types";
 
 interface ProfilePageProps {
   params: Promise<{ id: string }>;
@@ -18,6 +21,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
     data: { user: sessionUser },
   } = await supabase.auth.getUser();
   const isOwnProfile = sessionUser?.id === id;
+  let relationship: Relationship | null = null;
 
   const { data: user } = await admin
     .from("users")
@@ -26,6 +30,17 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
     .single();
 
   if (!user) notFound();
+
+  if (sessionUser && !isOwnProfile) {
+    const [userA, userB] = canonicalPair(sessionUser.id, id);
+    const { data } = await admin
+      .from("relationships")
+      .select("*")
+      .eq("user_a_id", userA)
+      .eq("user_b_id", userB)
+      .maybeSingle();
+    relationship = data;
+  }
 
   const [
     { data: stats },
@@ -90,6 +105,14 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
             </p>
           </div>
         </div>
+
+        {sessionUser && !isOwnProfile && (
+          <FriendActions
+            profileUserId={user.id}
+            currentUserId={sessionUser.id}
+            initialRelationship={relationship}
+          />
+        )}
 
         {isOwnProfile && (
           <ProfileColorSettings

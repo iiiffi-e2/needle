@@ -1,12 +1,13 @@
 import { notFound } from "next/navigation";
 import { Navbar } from "@/components/shared/Navbar";
 import { UserAvatar } from "@/components/shared/UserAvatar";
+import { BadgeCard } from "@/components/profile/BadgeCard";
 import { FriendActions } from "@/components/profile/FriendActions";
 import { ProfileColorSettings } from "@/components/profile/ProfileColorSettings";
 import { canonicalPair } from "@/lib/friends";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { formatDuration } from "@/lib/utils";
+import { formatDuration, timeAgo } from "@/lib/utils";
 import type { Relationship } from "@/lib/types";
 
 interface ProfilePageProps {
@@ -44,15 +45,16 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
 
   const [
     { data: stats },
-    { data: savedTracks },
+    { data: recentlyPlayed },
     { data: badges },
   ] = await Promise.all([
     admin.from("user_stats").select("*").eq("user_id", id).single(),
     admin
-      .from("saved_tracks")
-      .select("*, track:tracks(*)")
-      .eq("user_id", id)
-      .order("saved_at", { ascending: false })
+      .from("queue_items")
+      .select("*, track:tracks(*), room:rooms(name, slug)")
+      .eq("dj_user_id", id)
+      .eq("status", "played")
+      .order("played_at", { ascending: false })
       .limit(20),
     admin
       .from("user_badges")
@@ -163,56 +165,51 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {badges.map((ub) => (
-                <div
-                  key={ub.id}
-                  className="text-center p-3 rounded-xl bg-surface-light"
-                  title={ub.badge?.description || ""}
-                >
-                  <span className="text-2xl">{ub.badge?.icon || "🏅"}</span>
-                  <p className="text-xs font-medium mt-1">{ub.badge?.name}</p>
-                </div>
+                <BadgeCard key={ub.id} badge={ub.badge} />
               ))}
             </div>
           </div>
         )}
 
-        <div className="glass-card rounded-2xl p-5">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted mb-4">
-            Saved Tracks
-          </h2>
-          {savedTracks && savedTracks.length > 0 ? (
+        {recentlyPlayed && recentlyPlayed.length > 0 && (
+          <div className="glass-card rounded-2xl p-5">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted mb-4">
+              Recently Played
+            </h2>
             <div className="space-y-2">
-              {savedTracks.map((st) => (
+              {recentlyPlayed.map((item) => (
                 <div
-                  key={st.id}
+                  key={item.id}
                   className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-light/50 transition-colors"
                 >
-                  {st.track?.thumbnail_url && (
+                  {item.track?.thumbnail_url && (
                     <img
-                      src={st.track.thumbnail_url}
+                      src={item.track.thumbnail_url}
                       alt=""
                       className="w-10 h-10 rounded object-cover"
                     />
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium truncate">
-                      {st.track?.title}
+                      {item.track?.title}
                     </p>
-                    {st.track?.duration_seconds && (
-                      <p className="text-xs text-muted">
-                        {formatDuration(st.track.duration_seconds)}
-                      </p>
-                    )}
+                    <p className="text-xs text-muted truncate">
+                      {item.room?.name || "Unknown room"}
+                      {item.played_at && (
+                        <span suppressHydrationWarning>
+                          {` · ${timeAgo(item.played_at)}`}
+                        </span>
+                      )}
+                      {item.track?.duration_seconds
+                        ? ` · ${formatDuration(item.track.duration_seconds)}`
+                        : ""}
+                    </p>
                   </div>
                 </div>
               ))}
             </div>
-          ) : (
-            <p className="text-sm text-muted italic">
-              No saved tracks yet. Find something worth keeping in a room.
-            </p>
-          )}
-        </div>
+          </div>
+        )}
       </main>
     </div>
   );

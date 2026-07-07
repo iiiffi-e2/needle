@@ -4,6 +4,7 @@ import {
   isSadRoom,
   roomHasTag,
   statBadgeEligibility,
+  getBadgeDescription,
   BADGE,
 } from "./badges";
 
@@ -51,6 +52,20 @@ describe("isMidnightHour", () => {
   it("is true between midnight and 5am UTC", () => {
     expect(isMidnightHour(new Date("2026-01-01T02:30:00Z"))).toBe(true);
     expect(isMidnightHour(new Date("2026-01-01T05:00:00Z"))).toBe(false);
+  });
+});
+
+describe("getBadgeDescription", () => {
+  it("prefers the database description when present", () => {
+    expect(getBadgeDescription(BADGE.FIRST_SAVE, "Custom copy")).toBe(
+      "Custom copy"
+    );
+  });
+
+  it("falls back to the built-in description by badge name", () => {
+    expect(getBadgeDescription(BADGE.MIDNIGHT_CURATOR, null)).toBe(
+      "Active in late-night rooms"
+    );
   });
 });
 

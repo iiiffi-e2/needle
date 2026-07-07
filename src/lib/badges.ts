@@ -14,6 +14,28 @@ export const BADGE = {
 
 export type BadgeName = (typeof BADGE)[keyof typeof BADGE];
 
+export const BADGE_DESCRIPTIONS: Record<BadgeName, string> = {
+  [BADGE.DEEP_CUT_DEALER]: "Played tracks nobody else knew",
+  [BADGE.MIDNIGHT_CURATOR]: "Active in late-night rooms",
+  [BADGE.VIBE_ASSASSIN]: "Consistently awesome track picks",
+  [BADGE.BLOGHOUSE_ARCHAEOLOGIST]: "Revived forgotten gems",
+  [BADGE.NO_SKIP_MENACE]: "Tracks that never get lamed",
+  [BADGE.SAD_SONG_SOMMELIER]: "Master of melancholy",
+  [BADGE.FIRST_SAVE]: "Got your first track saved",
+  [BADGE.CROWD_FAVORITE]: "10+ awesome votes received",
+};
+
+export function getBadgeDescription(
+  name: string | null | undefined,
+  dbDescription?: string | null
+): string | null {
+  if (dbDescription) return dbDescription;
+  if (name && name in BADGE_DESCRIPTIONS) {
+    return BADGE_DESCRIPTIONS[name as BadgeName];
+  }
+  return null;
+}
+
 const SAD_ROOM_KEYWORDS = ["sad", "melancholy", "melancholic", "somber", "grief"];
 
 export function isMidnightHour(date = new Date()): boolean {

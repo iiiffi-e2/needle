@@ -354,7 +354,7 @@ export function FriendsClient({ currentUserId: currentUserIdProp }: FriendsClien
                 type="button"
                 onClick={() => friend.user && openFriendLocation(friend)}
                 disabled={!friend.user}
-                className="w-full text-left flex items-center justify-between gap-3 p-3 rounded-xl border border-[var(--ndl-line)] bg-surface-light hover:bg-white/10 transition-colors"
+                className="w-full text-left flex items-center justify-between gap-3 p-3 rounded-xl border border-[var(--ndl-line)] bg-surface-light hover:bg-white/10 transition-colors cursor-pointer disabled:cursor-not-allowed"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <UserAvatar

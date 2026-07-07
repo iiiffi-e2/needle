@@ -14,6 +14,12 @@ export async function GET() {
   }
 
   const admin = createServiceClient();
-  const friends = await listFriends(admin, user.id);
-  return NextResponse.json(friends);
+
+  try {
+    const friends = await listFriends(admin, user.id);
+    return NextResponse.json(friends);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to load friends";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

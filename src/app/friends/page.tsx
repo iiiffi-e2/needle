@@ -7,9 +7,10 @@ export default async function FriendsPage() {
   const supabase = await createClient();
   const {
     data: { user },
+    error,
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (error || !user) {
     redirect("/auth/login?redirect=/friends");
   }
 

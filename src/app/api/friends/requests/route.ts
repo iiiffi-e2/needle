@@ -14,6 +14,13 @@ export async function GET() {
   }
 
   const admin = createServiceClient();
-  const pending = await listPendingRequests(admin, user.id);
-  return NextResponse.json(pending);
+
+  try {
+    const pending = await listPendingRequests(admin, user.id);
+    return NextResponse.json(pending);
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Failed to load friend requests";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

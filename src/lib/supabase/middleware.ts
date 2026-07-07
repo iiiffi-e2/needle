@@ -77,6 +77,19 @@ export async function updateSession(request: NextRequest) {
 
   const userId = typeof claims?.sub === "string" ? claims.sub : null;
 
+  const protectedRoutes = ["/friends", "/rooms/create"];
+  if (
+    !userId &&
+    !isApi &&
+    !isAuthFlow &&
+    protectedRoutes.includes(pathname)
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/auth/login";
+    url.searchParams.set("redirect", pathname);
+    return NextResponse.redirect(url);
+  }
+
   if (userId && !isPublicAsset && !isApi) {
     // Cookie is trusted only when it belongs to the current user id.
     let hasAvatarColor =

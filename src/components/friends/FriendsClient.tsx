@@ -57,8 +57,10 @@ export function FriendsClient({ currentUserId }: FriendsClientProps) {
   const loadFriends = useCallback(async () => {
     setFriendsLoading(true);
     try {
-      const data = await fetchJson<FriendWithPresence[]>("/api/friends");
-      setFriends(data);
+      const data = await fetchJson<FriendWithPresence[] | { friends?: FriendWithPresence[] }>(
+        "/api/friends"
+      );
+      setFriends(Array.isArray(data) ? data : (data.friends ?? []));
     } catch (caught) {
       const message =
         caught instanceof Error ? caught.message : "Failed to load friends";
@@ -111,8 +113,14 @@ export function FriendsClient({ currentUserId }: FriendsClientProps) {
 
     const timer = setTimeout(() => {
       setSearching(true);
-      fetchJson<SearchUser[]>(`/api/users/search?q=${encodeURIComponent(q)}`)
-        .then((results) => setSearchResults(results))
+      fetchJson<SearchUser[] | { users?: SearchUser[] }>(
+        `/api/users/search?q=${encodeURIComponent(q)}`
+      )
+        .then((results) =>
+          setSearchResults(
+            Array.isArray(results) ? results : (results.users ?? [])
+          )
+        )
         .catch((caught) => {
           const message =
             caught instanceof Error ? caught.message : "Failed to search users";

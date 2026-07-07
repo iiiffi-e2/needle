@@ -12,7 +12,6 @@ type InviteWithJoins = RoomInvite & {
 };
 
 export function InviteToast() {
-  const supabase = createClient();
   const router = useRouter();
   const [userId, setUserId] = useState<string>();
   const [invites, setInvites] = useState<InviteWithJoins[]>([]);
@@ -26,11 +25,17 @@ export function InviteToast() {
       }
       return;
     }
-    const data = (await res.json()) as InviteWithJoins[];
-    setInvites(data ?? []);
+    const data = (await res.json()) as InviteWithJoins[] | { invites?: InviteWithJoins[] };
+    const nextInvites = Array.isArray(data)
+      ? data
+      : Array.isArray(data.invites)
+        ? data.invites
+        : [];
+    setInvites(nextInvites);
   }, []);
 
   useEffect(() => {
+    const supabase = createClient();
     const init = async () => {
       const {
         data: { user },
@@ -44,7 +49,7 @@ export function InviteToast() {
       await refreshInvites();
     };
     void init();
-  }, [supabase, refreshInvites]);
+  }, [refreshInvites]);
 
   useInviteRealtime(userId, refreshInvites);
 

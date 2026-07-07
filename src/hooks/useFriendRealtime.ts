@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export function useFriendRealtime(
   userId: string | undefined,
   onChange: () => void
 ) {
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
   useEffect(() => {
     if (!userId) return;
     const supabase = createClient();
@@ -21,7 +24,7 @@ export function useFriendRealtime(
           table: "relationships",
           filter: `user_a_id=eq.${userId}`,
         },
-        () => onChange()
+        () => onChangeRef.current()
       )
       .on(
         "postgres_changes",
@@ -31,20 +34,23 @@ export function useFriendRealtime(
           table: "relationships",
           filter: `user_b_id=eq.${userId}`,
         },
-        () => onChange()
+        () => onChangeRef.current()
       )
       .subscribe();
 
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [userId, onChange]);
+  }, [userId]);
 }
 
 export function useInviteRealtime(
   userId: string | undefined,
   onChange: () => void
 ) {
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
   useEffect(() => {
     if (!userId) return;
     const supabase = createClient();
@@ -59,12 +65,12 @@ export function useInviteRealtime(
           table: "room_invites",
           filter: `to_user_id=eq.${userId}`,
         },
-        () => onChange()
+        () => onChangeRef.current()
       )
       .subscribe();
 
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [userId, onChange]);
+  }, [userId]);
 }

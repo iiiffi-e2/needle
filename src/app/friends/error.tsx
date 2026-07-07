@@ -1,13 +1,19 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 
 export default function FriendsError({
+  error,
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    console.error("[/friends] render error:", error);
+  }, [error]);
+
   return (
     <div className="min-h-screen venue-bg flex flex-col items-center justify-center px-4">
       <p className="text-5xl mb-4">🪡</p>
@@ -18,6 +24,11 @@ export default function FriendsError({
         Something went wrong loading your friends list. Try again, or head back
         to the rooms.
       </p>
+      {error?.message && (
+        <p className="text-xs text-danger mb-6 text-center max-w-md font-mono break-words">
+          {error.message}
+        </p>
+      )}
       <div className="flex gap-3">
         <button
           type="button"

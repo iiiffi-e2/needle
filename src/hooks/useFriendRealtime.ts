@@ -12,35 +12,40 @@ export function useFriendRealtime(
 
   useEffect(() => {
     if (!userId) return;
-    const supabase = createClient();
+    try {
+      const supabase = createClient();
 
-    const channel = supabase
-      .channel(`friends:${userId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "relationships",
-          filter: `user_a_id=eq.${userId}`,
-        },
-        () => onChangeRef.current()
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "relationships",
-          filter: `user_b_id=eq.${userId}`,
-        },
-        () => onChangeRef.current()
-      )
-      .subscribe();
+      const channel = supabase
+        .channel(`friends:${userId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "relationships",
+            filter: `user_a_id=eq.${userId}`,
+          },
+          () => onChangeRef.current()
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "relationships",
+            filter: `user_b_id=eq.${userId}`,
+          },
+          () => onChangeRef.current()
+        )
+        .subscribe();
 
-    return () => {
-      void supabase.removeChannel(channel);
-    };
+      return () => {
+        void supabase.removeChannel(channel);
+      };
+    } catch {
+      // Realtime is best-effort; polling on actions keeps data fresh.
+      return;
+    }
   }, [userId]);
 }
 
@@ -53,24 +58,28 @@ export function useInviteRealtime(
 
   useEffect(() => {
     if (!userId) return;
-    const supabase = createClient();
+    try {
+      const supabase = createClient();
 
-    const channel = supabase
-      .channel(`invites:${userId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "room_invites",
-          filter: `to_user_id=eq.${userId}`,
-        },
-        () => onChangeRef.current()
-      )
-      .subscribe();
+      const channel = supabase
+        .channel(`invites:${userId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "room_invites",
+            filter: `to_user_id=eq.${userId}`,
+          },
+          () => onChangeRef.current()
+        )
+        .subscribe();
 
-    return () => {
-      void supabase.removeChannel(channel);
-    };
+      return () => {
+        void supabase.removeChannel(channel);
+      };
+    } catch {
+      return;
+    }
   }, [userId]);
 }

@@ -29,28 +29,66 @@ const EMPTY_REQUESTS: RequestsResponse = {
 function normalizeRequests(data: unknown): RequestsResponse {
   if (!data || typeof data !== "object") return EMPTY_REQUESTS;
   const record = data as Partial<RequestsResponse>;
+  const keepValid = (list: unknown): PendingRequest[] =>
+    Array.isArray(list)
+      ? list.filter(
+          (item): item is PendingRequest =>
+            Boolean(item) &&
+            typeof item === "object" &&
+            Boolean((item as PendingRequest).user) &&
+            Boolean((item as PendingRequest).id)
+        )
+      : [];
   return {
-    incoming: Array.isArray(record.incoming) ? record.incoming : [],
-    outgoing: Array.isArray(record.outgoing) ? record.outgoing : [],
+    incoming: keepValid(record.incoming),
+    outgoing: keepValid(record.outgoing),
   };
 }
 
+const OFFLINE_PRESENCE = {
+  roomId: null,
+  roomName: null,
+  roomSlug: null,
+  isPrivate: false,
+  canJoin: false,
+};
+
 function normalizeFriends(data: unknown): FriendWithPresence[] {
-  if (Array.isArray(data)) return data;
-  if (data && typeof data === "object" && "friends" in data) {
-    const friends = (data as { friends?: unknown }).friends;
-    return Array.isArray(friends) ? friends : [];
-  }
-  return [];
+  const raw = Array.isArray(data)
+    ? data
+    : data && typeof data === "object" && "friends" in data
+      ? (data as { friends?: unknown }).friends
+      : null;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter(
+      (entry): entry is FriendWithPresence =>
+        Boolean(entry) &&
+        typeof entry === "object" &&
+        Boolean((entry as FriendWithPresence).user)
+    )
+    .map((entry) => ({
+      user: entry.user,
+      presence: entry.presence ?? OFFLINE_PRESENCE,
+    }));
 }
 
 function normalizeSearchResults(data: unknown): SearchUser[] {
-  if (Array.isArray(data)) return data;
-  if (data && typeof data === "object" && "users" in data) {
-    const users = (data as { users?: unknown }).users;
-    return Array.isArray(users) ? users : [];
-  }
-  return [];
+  const raw = Array.isArray(data)
+    ? data
+    : data && typeof data === "object" && "users" in data
+      ? (data as { users?: unknown }).users
+      : null;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter(
+      (entry): entry is SearchUser =>
+        Boolean(entry) && typeof entry === "object" && Boolean((entry as SearchUser).id)
+    )
+    .map((entry) => ({
+      ...entry,
+      relationshipHint: entry.relationshipHint ?? "none",
+    }));
 }
 
 async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
@@ -240,20 +278,22 @@ export function FriendsClient({ currentUserId: currentUserIdProp }: FriendsClien
     });
 
   const renderPresence = (friend: FriendWithPresence) => {
-    if (!friend.presence.roomId) return "Offline";
-    if (friend.presence.isPrivate && !friend.presence.canJoin) {
+    const presence = friend.presence ?? OFFLINE_PRESENCE;
+    if (!presence.roomId) return "Offline";
+    if (presence.isPrivate && !presence.canJoin) {
       return "In a private room";
     }
-    if (friend.presence.canJoin && friend.presence.roomName) {
-      return `In ${friend.presence.roomName}`;
+    if (presence.canJoin && presence.roomName) {
+      return `In ${presence.roomName}`;
     }
     return "In a room";
   };
 
   const openFriendLocation = (friend: FriendWithPresence) => {
     if (!friend.user) return;
-    if (friend.presence.canJoin && friend.presence.roomSlug) {
-      router.push(`/rooms/${friend.presence.roomSlug}`);
+    const presence = friend.presence ?? OFFLINE_PRESENCE;
+    if (presence.canJoin && presence.roomSlug) {
+      router.push(`/rooms/${presence.roomSlug}`);
       return;
     }
     router.push(`/profile/${friend.user.id}`);
@@ -333,7 +373,7 @@ export function FriendsClient({ currentUserId: currentUserIdProp }: FriendsClien
                   </div>
                 </div>
                 <span className="text-xs text-glow-soft shrink-0">
-                  {friend.presence.canJoin ? "Join" : "View"}
+                  {friend.presence?.canJoin ? "Join" : "View"}
                 </span>
               </button>
             ))

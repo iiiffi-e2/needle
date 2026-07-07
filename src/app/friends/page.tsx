@@ -1,19 +1,8 @@
-import { redirect } from "next/navigation";
+import Link from "next/link";
 import { Navbar } from "@/components/shared/Navbar";
 import { FriendsClient } from "@/components/friends/FriendsClient";
-import { createClient } from "@/lib/supabase/server";
 
-export default async function FriendsPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error || !user) {
-    redirect("/auth/login?redirect=/friends");
-  }
-
+export default function FriendsPage() {
   return (
     <div className="min-h-screen venue-bg">
       <Navbar />
@@ -26,7 +15,7 @@ export default async function FriendsPage() {
             Keep up with your people, respond to requests, and find new listeners.
           </p>
         </div>
-        <FriendsClient currentUserId={user.id} />
+        <FriendsClient />
       </main>
     </div>
   );

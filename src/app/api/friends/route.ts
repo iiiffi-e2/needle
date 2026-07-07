@@ -20,6 +20,11 @@ export async function GET() {
     return NextResponse.json(friends);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to load friends";
+    const missingTable =
+      /relation .* does not exist|Could not find the table/i.test(message);
+    if (missingTable) {
+      return NextResponse.json([]);
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

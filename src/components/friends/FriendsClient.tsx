@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { useFriendRealtime } from "@/hooks/useFriendRealtime";
@@ -20,6 +21,38 @@ type RequestsResponse = {
 };
 type SearchUser = User & { relationshipHint: RelationshipHint };
 
+const EMPTY_REQUESTS: RequestsResponse = {
+  incoming: [],
+  outgoing: [],
+};
+
+function normalizeRequests(data: unknown): RequestsResponse {
+  if (!data || typeof data !== "object") return EMPTY_REQUESTS;
+  const record = data as Partial<RequestsResponse>;
+  return {
+    incoming: Array.isArray(record.incoming) ? record.incoming : [],
+    outgoing: Array.isArray(record.outgoing) ? record.outgoing : [],
+  };
+}
+
+function normalizeFriends(data: unknown): FriendWithPresence[] {
+  if (Array.isArray(data)) return data;
+  if (data && typeof data === "object" && "friends" in data) {
+    const friends = (data as { friends?: unknown }).friends;
+    return Array.isArray(friends) ? friends : [];
+  }
+  return [];
+}
+
+function normalizeSearchResults(data: unknown): SearchUser[] {
+  if (Array.isArray(data)) return data;
+  if (data && typeof data === "object" && "users" in data) {
+    const users = (data as { users?: unknown }).users;
+    return Array.isArray(users) ? users : [];
+  }
+  return [];
+}
+
 async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   const res = await fetch(input, init);
   const payload = await res.json().catch(() => ({}));
@@ -33,15 +66,16 @@ interface FriendsClientProps {
   currentUserId?: string;
 }
 
-export function FriendsClient({ currentUserId }: FriendsClientProps) {
+export function FriendsClient({ currentUserId: currentUserIdProp }: FriendsClientProps) {
   const router = useRouter();
+  const [currentUserId, setCurrentUserId] = useState<string | undefined>(
+    currentUserIdProp
+  );
+  const [authChecked, setAuthChecked] = useState(Boolean(currentUserIdProp));
   const [activeTab, setActiveTab] = useState<TabId>("friends");
   const [friends, setFriends] = useState<FriendWithPresence[]>([]);
   const [friendsLoading, setFriendsLoading] = useState(true);
-  const [requests, setRequests] = useState<RequestsResponse>({
-    incoming: [],
-    outgoing: [],
-  });
+  const [requests, setRequests] = useState<RequestsResponse>(EMPTY_REQUESTS);
   const [requestsLoading, setRequestsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
@@ -54,13 +88,31 @@ export function FriendsClient({ currentUserId }: FriendsClientProps) {
     [requests]
   );
 
+  useEffect(() => {
+    if (currentUserIdProp) return;
+    let cancelled = false;
+
+    import("@/lib/supabase/client")
+      .then(({ createClient }) => createClient().auth.getUser())
+      .then(({ data: { user } }) => {
+        if (cancelled) return;
+        setCurrentUserId(user?.id);
+      })
+      .finally(() => {
+        if (!cancelled) setAuthChecked(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUserIdProp]);
+
   const loadFriends = useCallback(async () => {
+    if (!currentUserId) return;
     setFriendsLoading(true);
     try {
-      const data = await fetchJson<FriendWithPresence[] | { friends?: FriendWithPresence[] }>(
-        "/api/friends"
-      );
-      setFriends(Array.isArray(data) ? data : (data.friends ?? []));
+      const data = await fetchJson<unknown>("/api/friends");
+      setFriends(normalizeFriends(data));
     } catch (caught) {
       const message =
         caught instanceof Error ? caught.message : "Failed to load friends";
@@ -68,13 +120,14 @@ export function FriendsClient({ currentUserId }: FriendsClientProps) {
     } finally {
       setFriendsLoading(false);
     }
-  }, []);
+  }, [currentUserId]);
 
   const loadRequests = useCallback(async () => {
+    if (!currentUserId) return;
     setRequestsLoading(true);
     try {
-      const data = await fetchJson<RequestsResponse>("/api/friends/requests");
-      setRequests(data);
+      const data = await fetchJson<unknown>("/api/friends/requests");
+      setRequests(normalizeRequests(data));
     } catch (caught) {
       const message =
         caught instanceof Error ? caught.message : "Failed to load requests";
@@ -82,11 +135,12 @@ export function FriendsClient({ currentUserId }: FriendsClientProps) {
     } finally {
       setRequestsLoading(false);
     }
-  }, []);
+  }, [currentUserId]);
 
   useEffect(() => {
+    if (!currentUserId) return;
     void Promise.all([loadFriends(), loadRequests()]);
-  }, [loadFriends, loadRequests]);
+  }, [currentUserId, loadFriends, loadRequests]);
 
   const refreshFromRealtime = useCallback(() => {
     if (activeTab === "friends") {
@@ -113,14 +167,8 @@ export function FriendsClient({ currentUserId }: FriendsClientProps) {
 
     const timer = setTimeout(() => {
       setSearching(true);
-      fetchJson<SearchUser[] | { users?: SearchUser[] }>(
-        `/api/users/search?q=${encodeURIComponent(q)}`
-      )
-        .then((results) =>
-          setSearchResults(
-            Array.isArray(results) ? results : (results.users ?? [])
-          )
-        )
+      fetchJson<unknown>(`/api/users/search?q=${encodeURIComponent(q)}`)
+        .then((results) => setSearchResults(normalizeSearchResults(results)))
         .catch((caught) => {
           const message =
             caught instanceof Error ? caught.message : "Failed to search users";
@@ -203,6 +251,7 @@ export function FriendsClient({ currentUserId }: FriendsClientProps) {
   };
 
   const openFriendLocation = (friend: FriendWithPresence) => {
+    if (!friend.user) return;
     if (friend.presence.canJoin && friend.presence.roomSlug) {
       router.push(`/rooms/${friend.presence.roomSlug}`);
       return;
@@ -212,6 +261,20 @@ export function FriendsClient({ currentUserId }: FriendsClientProps) {
 
   return (
     <section className="glass-card rounded-2xl p-5">
+      {!authChecked ? (
+        <p className="text-sm text-muted italic">Loading friends...</p>
+      ) : !currentUserId ? (
+        <div className="text-center py-8">
+          <p className="text-muted mb-4">Sign in to view and manage your friends.</p>
+          <Link
+            href="/auth/login?redirect=/friends"
+            className="btn-primary px-6 py-2.5 rounded-full font-bold"
+          >
+            Sign in
+          </Link>
+        </div>
+      ) : (
+        <>
       <div className="flex flex-wrap gap-2 mb-5">
         {[
           { id: "friends" as const, label: "Friends", count: friends.length },
@@ -245,11 +308,12 @@ export function FriendsClient({ currentUserId }: FriendsClientProps) {
               No friends yet. Search for someone to connect with.
             </p>
           ) : (
-            friends.map((friend) => (
+            friends.map((friend, index) => (
               <button
-                key={friend.user.id}
+                key={friend.user?.id ?? `friend-${index}`}
                 type="button"
-                onClick={() => openFriendLocation(friend)}
+                onClick={() => friend.user && openFriendLocation(friend)}
+                disabled={!friend.user}
                 className="w-full text-left flex items-center justify-between gap-3 p-3 rounded-xl border border-[var(--ndl-line)] bg-surface-light hover:bg-white/10 transition-colors"
               >
                 <div className="flex items-center gap-3 min-w-0">
@@ -443,6 +507,8 @@ export function FriendsClient({ currentUserId }: FriendsClientProps) {
             ))}
           </div>
         </div>
+      )}
+        </>
       )}
     </section>
   );

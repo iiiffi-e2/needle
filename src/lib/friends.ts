@@ -313,11 +313,15 @@ export async function listFriends(
   admin: SupabaseClient,
   userId: string
 ): Promise<FriendWithPresence[]> {
-  const { data: relationships } = await admin
+  const { data: relationships, error } = await admin
     .from("relationships")
     .select("*")
     .eq("status", "accepted")
     .or(`user_a_id.eq.${userId},user_b_id.eq.${userId}`);
+
+  if (error) {
+    throw new FriendRequestError(500, error.message);
+  }
 
   if (!relationships?.length) return [];
 
@@ -426,11 +430,15 @@ export async function listPendingRequests(
   incoming: Array<Relationship & { user: User }>;
   outgoing: Array<Relationship & { user: User }>;
 }> {
-  const { data: pending } = await admin
+  const { data: pending, error } = await admin
     .from("relationships")
     .select("*")
     .eq("status", "pending")
     .or(`user_a_id.eq.${userId},user_b_id.eq.${userId}`);
+
+  if (error) {
+    throw new FriendRequestError(500, error.message);
+  }
 
   const incoming: Array<Relationship & { user: User }> = [];
   const outgoing: Array<Relationship & { user: User }> = [];

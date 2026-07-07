@@ -21,6 +21,11 @@ export async function GET() {
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Failed to load friend requests";
+    const missingTable =
+      /relation .* does not exist|Could not find the table/i.test(message);
+    if (missingTable) {
+      return NextResponse.json({ incoming: [], outgoing: [] });
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

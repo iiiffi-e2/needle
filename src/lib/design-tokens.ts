@@ -180,6 +180,61 @@ export function clampCrowdFloorPosition(
   return { leftPct: 55, topPct: 58 };
 }
 
+export type CrowdPos = { leftPct: number; topPct: number };
+
+export function crowdPosStorageKey(roomSlug: string): string {
+  return `needle:crowd-pos:${roomSlug}`;
+}
+
+export function parseCrowdPos(
+  raw: string | null,
+  size: number = CROWD_PLACE_SIZE
+): CrowdPos | null {
+  if (!raw) return null;
+  try {
+    const data = JSON.parse(raw) as Partial<CrowdPos>;
+    if (
+      typeof data.leftPct !== "number" ||
+      typeof data.topPct !== "number" ||
+      !Number.isFinite(data.leftPct) ||
+      !Number.isFinite(data.topPct)
+    ) {
+      return null;
+    }
+    if (!isValidCrowdFloorPosition(data.leftPct, data.topPct, size)) {
+      return null;
+    }
+    return { leftPct: data.leftPct, topPct: data.topPct };
+  } catch {
+    return null;
+  }
+}
+
+export function loadCrowdPos(
+  roomSlug: string,
+  size: number = CROWD_PLACE_SIZE
+): CrowdPos | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return parseCrowdPos(localStorage.getItem(crowdPosStorageKey(roomSlug)), size);
+  } catch {
+    return null;
+  }
+}
+
+export function saveCrowdPos(roomSlug: string, pos: CrowdPos): void {
+  if (typeof window === "undefined") return;
+  const clamped = clampCrowdFloorPosition(pos.leftPct, pos.topPct);
+  try {
+    localStorage.setItem(
+      crowdPosStorageKey(roomSlug),
+      JSON.stringify(clamped)
+    );
+  } catch {
+    // ignore quota / private mode
+  }
+}
+
 type CrowdSlot = {
   leftPct: number;
   topPct: number;

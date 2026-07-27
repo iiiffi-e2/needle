@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   assignCrowdLayout,
   clampCrowdFloorPosition,
@@ -8,7 +8,11 @@ import {
   CROWD_SPEC,
   CROWD_UI_MAX_Z,
   crowdOverlapsUiChrome,
+  crowdPosStorageKey,
   isValidCrowdFloorPosition,
+  loadCrowdPos,
+  parseCrowdPos,
+  saveCrowdPos,
 } from "./design-tokens";
 
 /** IDs that hash into the bottom-left / bottom-right under the old overflow formula. */
@@ -88,5 +92,47 @@ describe("crowd floor position", () => {
     const pos = clampCrowdFloorPosition(20, 72);
     expect(pos.leftPct).toBeGreaterThanOrEqual(CROWD_FLOOR.frontLeftMin);
     expect(isValidCrowdFloorPosition(pos.leftPct, pos.topPct)).toBe(true);
+  });
+});
+
+describe("crowd pos storage", () => {
+  it("builds the per-room storage key", () => {
+    expect(crowdPosStorageKey("first-room")).toBe("needle:crowd-pos:first-room");
+  });
+
+  it("parseCrowdPos returns null for invalid JSON", () => {
+    expect(parseCrowdPos("nope")).toBeNull();
+    expect(parseCrowdPos(null)).toBeNull();
+    expect(parseCrowdPos("{}")).toBeNull();
+  });
+
+  it("parseCrowdPos accepts valid coords and rejects chrome hits", () => {
+    expect(parseCrowdPos(JSON.stringify({ leftPct: 55, topPct: 58 }))).toEqual({
+      leftPct: 55,
+      topPct: 58,
+    });
+    expect(parseCrowdPos(JSON.stringify({ leftPct: 20, topPct: 80 }))).toBeNull();
+  });
+
+  it("saveCrowdPos + loadCrowdPos round-trip in localStorage", () => {
+    const store = new Map<string, string>();
+    vi.stubGlobal("localStorage", {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => {
+        store.set(k, v);
+      },
+      removeItem: (k: string) => {
+        store.delete(k);
+      },
+    });
+    vi.stubGlobal("window", {});
+
+    const slug = "test-room-pos";
+    localStorage.removeItem(crowdPosStorageKey(slug));
+    saveCrowdPos(slug, { leftPct: 60, topPct: 62 });
+    expect(loadCrowdPos(slug)).toEqual({ leftPct: 60, topPct: 62 });
+    localStorage.removeItem(crowdPosStorageKey(slug));
+
+    vi.unstubAllGlobals();
   });
 });

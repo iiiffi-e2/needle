@@ -54,6 +54,7 @@ export function useLocalCrowdPosition(roomSlug: string, enabled: boolean) {
   const onPointerDown = useCallback(
     (event: React.PointerEvent<HTMLElement>) => {
       if (!enabled || event.button !== 0) return;
+      if (dragRef.current) return;
       const venue = event.currentTarget
         .closest(".needle-venue-inner")
         ?.getBoundingClientRect();

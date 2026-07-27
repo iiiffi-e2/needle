@@ -307,6 +307,12 @@ async function silentUpsertMembers(
   if (error) throw new Error(error.message);
 }
 
+function isUniqueViolation(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  if (error.code === "23505") return true;
+  return /unique|duplicate key/i.test(error.message ?? "");
+}
+
 export async function startStressRun(
   admin: SupabaseClient,
   raw: StressStartInput
@@ -336,10 +342,12 @@ export async function startStressRun(
   const perRoom = distributeStressCounts(validated.totalListeners, roomIds);
 
   let botIds: string[] = [];
+  let claimedRunId: string | null = null;
   try {
     botIds = await ensureBotPool(admin, validated.totalListeners);
-    await silentUpsertMembers(admin, perRoom, botIds);
 
+    // Claim the single "running" slot before injecting memberships so a
+    // concurrent start loses on unique index without tearing down peers.
     const expiresAt = new Date(
       Date.now() + validated.ttlMinutes * 60_000
     ).toISOString();
@@ -360,16 +368,17 @@ export async function startStressRun(
       .single();
 
     if (error || !run) {
-      const base = error?.message ?? "failed to create run";
-      try {
-        await teardownMemberships(admin, roomIds, botIds);
-      } catch (teardownErr) {
-        const tMsg =
-          teardownErr instanceof Error ? teardownErr.message : "teardown failed";
-        return { error: `${base}; cleanup: ${tMsg}`, status: 500 };
+      if (isUniqueViolation(error)) {
+        return {
+          error: "A stress run is already active; stop it first",
+          status: 409,
+        };
       }
-      return { error: base, status: 500 };
+      return { error: error?.message ?? "failed to create run", status: 500 };
     }
+
+    claimedRunId = run.id;
+    await silentUpsertMembers(admin, perRoom, botIds);
 
     console.info(
       JSON.stringify({
@@ -382,25 +391,39 @@ export async function startStressRun(
     return { run: mapRun(run) };
   } catch (e) {
     let message = e instanceof Error ? e.message : "start failed";
-    try {
-      await teardownMemberships(admin, roomIds, botIds);
-    } catch (teardownErr) {
-      const tMsg =
-        teardownErr instanceof Error ? teardownErr.message : "teardown failed";
-      message = `${message}; cleanup: ${tMsg}`;
+    // Only tear down memberships this attempt may have injected (after claim).
+    if (claimedRunId && botIds.length) {
+      try {
+        await teardownMemberships(admin, roomIds, botIds);
+      } catch (teardownErr) {
+        const tMsg =
+          teardownErr instanceof Error ? teardownErr.message : "teardown failed";
+        message = `${message}; cleanup: ${tMsg}`;
+      }
     }
-    await admin.from("stress_runs").insert({
-      status: "failed",
-      mode: "presence",
-      primary_room_id: primaryId,
-      secondary_room_ids: secondaryIds,
-      total_listeners: validated.totalListeners,
-      per_room_counts: perRoom,
-      bot_user_ids: botIds,
-      expires_at: new Date().toISOString(),
-      stopped_at: new Date().toISOString(),
-      error: message,
-    });
+    if (claimedRunId) {
+      await admin
+        .from("stress_runs")
+        .update({
+          status: "failed",
+          stopped_at: new Date().toISOString(),
+          error: message,
+        })
+        .eq("id", claimedRunId);
+    } else {
+      await admin.from("stress_runs").insert({
+        status: "failed",
+        mode: "presence",
+        primary_room_id: primaryId,
+        secondary_room_ids: secondaryIds,
+        total_listeners: validated.totalListeners,
+        per_room_counts: perRoom,
+        bot_user_ids: botIds,
+        expires_at: new Date().toISOString(),
+        stopped_at: new Date().toISOString(),
+        error: message,
+      });
+    }
     return { error: message, status: 500 };
   }
 }
@@ -422,7 +445,7 @@ export async function stopStressRun(
     return { ok: false, error: message };
   }
 
-  const { data } = await admin
+  const { data, error } = await admin
     .from("stress_runs")
     .update({
       status: reason,
@@ -431,6 +454,13 @@ export async function stopStressRun(
     .eq("id", active.id)
     .select("*")
     .single();
+
+  if (error) {
+    return {
+      ok: false,
+      error: `Memberships already torn down but status update failed: ${error.message}`,
+    };
+  }
 
   console.info(
     JSON.stringify({ event: `stress_${reason}`, runId: active.id })
@@ -455,11 +485,15 @@ export async function tickStressRun(
 
   const roomIds = [active.primary_room_id, ...active.secondary_room_ids];
   const now = new Date().toISOString();
-  await admin
+  const { error } = await admin
     .from("room_members")
     .update({ last_seen: now })
     .in("room_id", roomIds)
     .in("user_id", active.bot_user_ids);
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
 
   console.info(
     JSON.stringify({ event: "stress_tick", runId: active.id, action: "heartbeat" })

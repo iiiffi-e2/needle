@@ -109,7 +109,76 @@ function crowdDepthZ(topPct: number): number {
 }
 
 /** Worst-case blob diameter used when testing chrome / neighbor clearance. */
-const CROWD_PLACE_SIZE = 64;
+export const CROWD_PLACE_SIZE = 64;
+
+export const CROWD_FLOOR = {
+  leftMin: 11,
+  leftMax: 86,
+  topMin: 48,
+  topMax: 84,
+  frontTopGate: 66,
+  frontLeftMin: 46,
+} as const;
+
+export function isValidCrowdFloorPosition(
+  leftPct: number,
+  topPct: number,
+  size: number = CROWD_PLACE_SIZE
+): boolean {
+  if (
+    leftPct < CROWD_FLOOR.leftMin ||
+    leftPct > CROWD_FLOOR.leftMax ||
+    topPct < CROWD_FLOOR.topMin ||
+    topPct > CROWD_FLOOR.topMax
+  ) {
+    return false;
+  }
+  if (topPct >= CROWD_FLOOR.frontTopGate && leftPct < CROWD_FLOOR.frontLeftMin) {
+    return false;
+  }
+  return !crowdOverlapsUiChrome(leftPct, topPct, size);
+}
+
+export function clampCrowdFloorPosition(
+  leftPct: number,
+  topPct: number,
+  size: number = CROWD_PLACE_SIZE
+): { leftPct: number; topPct: number } {
+  let left = Math.min(CROWD_FLOOR.leftMax, Math.max(CROWD_FLOOR.leftMin, leftPct));
+  let top = Math.min(CROWD_FLOOR.topMax, Math.max(CROWD_FLOOR.topMin, topPct));
+  if (top >= CROWD_FLOOR.frontTopGate && left < CROWD_FLOOR.frontLeftMin) {
+    left = CROWD_FLOOR.frontLeftMin;
+  }
+  if (isValidCrowdFloorPosition(left, top, size)) {
+    return { leftPct: left, topPct: top };
+  }
+  // Spiral search for nearest valid seat (step 2%).
+  for (let radius = 2; radius <= 40; radius += 2) {
+    for (let dx = -radius; dx <= radius; dx += 2) {
+      for (let dy = -radius; dy <= radius; dy += 2) {
+        const cand = {
+          leftPct: left + dx,
+          topPct: top + dy,
+        };
+        let cl = Math.min(
+          CROWD_FLOOR.leftMax,
+          Math.max(CROWD_FLOOR.leftMin, cand.leftPct)
+        );
+        let ct = Math.min(
+          CROWD_FLOOR.topMax,
+          Math.max(CROWD_FLOOR.topMin, cand.topPct)
+        );
+        if (ct >= CROWD_FLOOR.frontTopGate && cl < CROWD_FLOOR.frontLeftMin) {
+          cl = CROWD_FLOOR.frontLeftMin;
+        }
+        if (isValidCrowdFloorPosition(cl, ct, size)) {
+          return { leftPct: cl, topPct: ct };
+        }
+      }
+    }
+  }
+  return { leftPct: 55, topPct: 58 };
+}
 
 type CrowdSlot = {
   leftPct: number;

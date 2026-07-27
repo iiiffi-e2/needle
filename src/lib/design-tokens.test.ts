@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   assignCrowdLayout,
+  clampCrowdFloorPosition,
+  CROWD_FLOOR,
   CROWD_MIN_SEP_X,
   CROWD_MIN_SEP_Y,
   CROWD_SPEC,
   CROWD_UI_MAX_Z,
   crowdOverlapsUiChrome,
+  isValidCrowdFloorPosition,
 } from "./design-tokens";
 
 /** IDs that hash into the bottom-left / bottom-right under the old overflow formula. */
@@ -56,5 +59,34 @@ describe("assignCrowdLayout", () => {
     // Designed back-row spot should stay put when it clears UI chrome.
     expect(layout[0]?.leftPct).toBeCloseTo((CROWD_SPEC[0].x / 940) * 100, 5);
     expect(layout[0]?.topPct).toBeCloseTo((CROWD_SPEC[0].y / 716) * 100, 5);
+  });
+});
+
+describe("crowd floor position", () => {
+  it("rejects positions over the now-playing panel", () => {
+    expect(isValidCrowdFloorPosition(20, 80)).toBe(false);
+  });
+
+  it("rejects positions over the reaction rail", () => {
+    expect(isValidCrowdFloorPosition(95, 60)).toBe(false);
+  });
+
+  it("accepts a mid-floor seat", () => {
+    expect(isValidCrowdFloorPosition(55, 58)).toBe(true);
+  });
+
+  it("clamps into the floor envelope and out of chrome", () => {
+    const pos = clampCrowdFloorPosition(5, 90);
+    expect(pos.leftPct).toBeGreaterThanOrEqual(CROWD_FLOOR.leftMin);
+    expect(pos.leftPct).toBeLessThanOrEqual(CROWD_FLOOR.leftMax);
+    expect(pos.topPct).toBeGreaterThanOrEqual(CROWD_FLOOR.topMin);
+    expect(pos.topPct).toBeLessThanOrEqual(CROWD_FLOOR.topMax);
+    expect(isValidCrowdFloorPosition(pos.leftPct, pos.topPct)).toBe(true);
+  });
+
+  it("forces front-row seats right of the player zone", () => {
+    const pos = clampCrowdFloorPosition(20, 72);
+    expect(pos.leftPct).toBeGreaterThanOrEqual(CROWD_FLOOR.frontLeftMin);
+    expect(isValidCrowdFloorPosition(pos.leftPct, pos.topPct)).toBe(true);
   });
 });

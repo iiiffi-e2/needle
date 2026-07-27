@@ -850,67 +850,81 @@ export function VenueCanvas({
         />
       </div>
 
-      {/* Crowd avatars */}
-      {crowd.map((c) => {
-        const member = listeners.find((m) => m.user_id === c.userId);
-        if (!member) return null;
-        const userReactions = reactionsByUser.get(c.userId) ?? [];
-        const displayName =
-          member.user_id === currentUserId
-            ? "you"
-            : member.user?.display_name || "?";
+      {/* Crowd avatars — z-20 keeps members under now-playing (z-30) / reacts */}
+      <div className="absolute inset-0 z-[20] pointer-events-none">
+        {crowd.map((c) => {
+          const member = listeners.find((m) => m.user_id === c.userId);
+          if (!member) return null;
+          const userReactions = reactionsByUser.get(c.userId) ?? [];
+          const displayName =
+            member.user_id === currentUserId
+              ? "you"
+              : member.user?.display_name || "?";
 
-        return (
-          <div
-            key={member.id}
-            className="needle-crowd-member absolute flex flex-col items-center pointer-events-auto"
-            style={{
-              left: `${c.leftPct}%`,
-              top: `${c.topPct}%`,
-              transform: "translateX(-50%)",
-              zIndex: c.zIndex,
-            }}
-          >
-            {member.user_id === currentUserId ? (
-              <>
-                <div className="relative" style={{ width: c.size }}>
-                  <HeadReactionGlyphs reactions={userReactions} size={c.size} />
-                  <CrowdMemberBlob
-                    color={resolveUserColor(c.userId, userColors.get(c.userId))}
-                    size={c.size}
-                    dance={c.dance}
-                    animDuration={c.animDuration}
+          return (
+            <div
+              key={member.id}
+              className="needle-crowd-member absolute flex flex-col items-center pointer-events-auto"
+              style={{
+                left: `${c.leftPct}%`,
+                top: `${c.topPct}%`,
+                transform: "translateX(-50%)",
+                zIndex: c.zIndex,
+              }}
+            >
+              {member.user_id === currentUserId ? (
+                <>
+                  <div className="relative" style={{ width: c.size }}>
+                    <HeadReactionGlyphs
+                      reactions={userReactions}
+                      size={c.size}
+                    />
+                    <CrowdMemberBlob
+                      color={resolveUserColor(
+                        c.userId,
+                        userColors.get(c.userId)
+                      )}
+                      size={c.size}
+                      dance={c.dance}
+                      animDuration={c.animDuration}
+                    />
+                  </div>
+                  <BlobNameLabel
+                    name={displayName}
+                    maxWidth={Math.max(56, c.size + 12)}
                   />
-                </div>
-                <BlobNameLabel
-                  name={displayName}
-                  maxWidth={Math.max(56, c.size + 12)}
-                />
-              </>
-            ) : (
-              <ProfileLink
-                userId={member.user_id}
-                title={`${displayName} — view profile`}
-                className="flex flex-col items-center cursor-pointer hover:opacity-90 transition-opacity"
-              >
-                <div className="relative" style={{ width: c.size }}>
-                  <HeadReactionGlyphs reactions={userReactions} size={c.size} />
-                  <CrowdMemberBlob
-                    color={resolveUserColor(c.userId, userColors.get(c.userId))}
-                    size={c.size}
-                    dance={c.dance}
-                    animDuration={c.animDuration}
+                </>
+              ) : (
+                <ProfileLink
+                  userId={member.user_id}
+                  title={`${displayName} — view profile`}
+                  className="flex flex-col items-center cursor-pointer hover:opacity-90 transition-opacity"
+                >
+                  <div className="relative" style={{ width: c.size }}>
+                    <HeadReactionGlyphs
+                      reactions={userReactions}
+                      size={c.size}
+                    />
+                    <CrowdMemberBlob
+                      color={resolveUserColor(
+                        c.userId,
+                        userColors.get(c.userId)
+                      )}
+                      size={c.size}
+                      dance={c.dance}
+                      animDuration={c.animDuration}
+                    />
+                  </div>
+                  <BlobNameLabel
+                    name={displayName}
+                    maxWidth={Math.max(56, c.size + 12)}
                   />
-                </div>
-                <BlobNameLabel
-                  name={displayName}
-                  maxWidth={Math.max(56, c.size + 12)}
-                />
-              </ProfileLink>
-            )}
-          </div>
-        );
-      })}
+                </ProfileLink>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

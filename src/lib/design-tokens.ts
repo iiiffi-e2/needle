@@ -28,6 +28,20 @@ export const CROWD_SPEC = [
 export const VENUE_W = 940;
 export const VENUE_H = 716;
 
+/**
+ * Now-playing panel and quick-reacts sit at z-30. Crowd stacking must stay
+ * strictly below that so avatars never paint over chrome.
+ */
+export const CROWD_UI_MAX_Z = 25;
+
+/** Percent rects covering the desktop now-playing panel and reaction rail. */
+const CROWD_UI_EXCLUSIONS = [
+  // Now spinning panel — bottom-left
+  { left: 0, right: 44, top: 66, bottom: 100 },
+  // Quick reacts rail — bottom-right
+  { left: 88, right: 100, top: 48, bottom: 90 },
+] as const;
+
 export function hashUserId(userId: string): number {
   let hash = 0;
   for (let i = 0; i < userId.length; i++) {
@@ -48,6 +62,52 @@ export function resolveUserColor(
 ): string {
   if (avatarColor) return avatarColor;
   return crowdColorForUser(userId);
+}
+
+/** True if an avatar (center at left/top %, diameter `size` px) hits UI chrome. */
+export function crowdOverlapsUiChrome(
+  leftPct: number,
+  topPct: number,
+  size: number
+): boolean {
+  const halfW = ((size / 2) / VENUE_W) * 100;
+  // Blob + name label roughly extend ~1.35× size downward from the anchor.
+  const heightPct = ((size * 1.35) / VENUE_H) * 100;
+  const left = leftPct - halfW;
+  const right = leftPct + halfW;
+  const top = topPct;
+  const bottom = topPct + heightPct;
+
+  return CROWD_UI_EXCLUSIONS.some(
+    (zone) =>
+      left < zone.right &&
+      right > zone.left &&
+      top < zone.bottom &&
+      bottom > zone.top
+  );
+}
+
+function placeAwayFromUi(
+  seed: number,
+  size: number
+): { leftPct: number; topPct: number } {
+  for (let attempt = 0; attempt < 24; attempt++) {
+    const leftPct = 12 + ((seed + attempt * 17) % 76);
+    const topPct = 48 + (((seed >> 5) + attempt * 13) % 28);
+    if (!crowdOverlapsUiChrome(leftPct, topPct, size)) {
+      return { leftPct, topPct };
+    }
+  }
+  // Safe center-floor fallback if hash probes all land in chrome.
+  return {
+    leftPct: 48 + (seed % 16),
+    topPct: 54 + ((seed >> 3) % 10),
+  };
+}
+
+function crowdDepthZ(topPct: number): number {
+  // Lower on the floor → higher among the crowd, but always ≤ CROWD_UI_MAX_Z.
+  return Math.max(1, Math.min(CROWD_UI_MAX_Z, Math.round(topPct / 4)));
 }
 
 export interface CrowdLayoutItem {
@@ -75,11 +135,13 @@ export function assignCrowdLayout(listenerIds: string[]): CrowdLayoutItem[] {
       topPct = (spec.y / VENUE_H) * 100;
       size = spec.s;
       dance = spec.dance;
+      if (crowdOverlapsUiChrome(leftPct, topPct, size)) {
+        ({ leftPct, topPct } = placeAwayFromUi(h ^ (i * 97), size));
+      }
     } else {
-      leftPct = 10 + (h % 80);
-      topPct = 52 + ((h >> 5) % 35);
       size = 44 + (h % 20);
       dance = (h & 1) === 1;
+      ({ leftPct, topPct } = placeAwayFromUi(h ^ (i * 31), size));
     }
 
     return {
@@ -88,7 +150,7 @@ export function assignCrowdLayout(listenerIds: string[]): CrowdLayoutItem[] {
       topPct,
       size,
       dance,
-      zIndex: Math.round((i < CROWD_SPEC.length ? spec.y : topPct * 7)),
+      zIndex: crowdDepthZ(topPct),
       animDuration: dance ? 1.7 + i * 0.1 : 3 + i * 0.18,
     };
   });

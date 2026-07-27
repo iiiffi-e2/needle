@@ -1,3 +1,11 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { CROWD_COLORS } from "@/lib/design-tokens";
+import {
+  ensureUniqueDisplayName,
+  generateStressDisplayName,
+} from "@/lib/stress-bot-names";
+import type { StressRun } from "@/lib/types";
+
 export const MAX_STRESS_LISTENERS = 250;
 export const MAX_STRESS_ROOMS = 3;
 export const DEFAULT_STRESS_TTL_MINUTES = 20;
@@ -79,4 +87,297 @@ export function validateStressStartInput(input: StressStartInput):
     ttlMinutes: ttl,
     mode: "presence",
   };
+}
+
+export function assertStressSecret(request: Request): boolean {
+  const expected = process.env.STRESS_TEST_SECRET;
+  if (!expected) return false;
+  const header = request.headers.get("authorization");
+  if (header === `Bearer ${expected}`) return true;
+  const alt = request.headers.get("x-stress-secret");
+  return alt === expected;
+}
+
+export function assertCronSecret(request: Request): boolean {
+  const cron = process.env.CRON_SECRET;
+  if (cron) {
+    const auth = request.headers.get("authorization");
+    if (auth === `Bearer ${cron}`) return true;
+  }
+  return assertStressSecret(request);
+}
+
+function mapRun(row: Record<string, unknown>): StressRun {
+  return {
+    id: row.id as string,
+    status: row.status as StressRun["status"],
+    mode: row.mode as StressRun["mode"],
+    primary_room_id: row.primary_room_id as string,
+    secondary_room_ids: (row.secondary_room_ids as string[]) ?? [],
+    total_listeners: row.total_listeners as number,
+    per_room_counts: (row.per_room_counts as Record<string, number>) ?? {},
+    bot_user_ids: (row.bot_user_ids as string[]) ?? [],
+    started_at: row.started_at as string,
+    expires_at: row.expires_at as string,
+    stopped_at: (row.stopped_at as string | null) ?? null,
+    error: (row.error as string | null) ?? null,
+    created_at: row.created_at as string,
+  };
+}
+
+export async function getActiveStressRun(
+  admin: SupabaseClient
+): Promise<StressRun | null> {
+  const { data } = await admin
+    .from("stress_runs")
+    .select("*")
+    .eq("status", "running")
+    .maybeSingle();
+  return data ? mapRun(data) : null;
+}
+
+async function teardownMemberships(
+  admin: SupabaseClient,
+  roomIds: string[],
+  botUserIds: string[]
+): Promise<void> {
+  if (!roomIds.length || !botUserIds.length) return;
+  await admin
+    .from("room_members")
+    .delete()
+    .in("room_id", roomIds)
+    .in("user_id", botUserIds);
+}
+
+async function ensureBotPool(
+  admin: SupabaseClient,
+  needed: number
+): Promise<string[]> {
+  const { data: existing } = await admin
+    .from("users")
+    .select("id, display_name")
+    .eq("is_stress_bot", true)
+    .limit(MAX_STRESS_LISTENERS);
+
+  const bots = [...(existing ?? [])];
+  // Prefer stress-bot names only (avoid unbounded PII select); retry on unique collisions.
+  const taken = new Set(
+    bots
+      .map((u) => u.display_name)
+      .filter((n): n is string => Boolean(n))
+  );
+
+  while (bots.length < needed) {
+    const n = bots.length + 1;
+    const email = `stress-bot-${n}@needle.internal`;
+    let displayName = ensureUniqueDisplayName(generateStressDisplayName(), taken);
+    taken.add(displayName);
+    const color = CROWD_COLORS[bots.length % CROWD_COLORS.length]!;
+
+    const { data: created, error } = await admin.auth.admin.createUser({
+      email,
+      email_confirm: true,
+      password: crypto.randomUUID() + crypto.randomUUID(),
+      user_metadata: {
+        display_name: displayName,
+        stress_bot: true,
+      },
+    });
+    if (error || !created.user) {
+      throw new Error(error?.message ?? "failed to create stress bot");
+    }
+
+    // Trigger creates public.users; update flag + profile fields
+    let upErr: { message: string } | null = null;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const { error } = await admin
+        .from("users")
+        .update({
+          is_stress_bot: true,
+          display_name: displayName,
+          avatar_color: color,
+        })
+        .eq("id", created.user.id);
+      if (!error) {
+        upErr = null;
+        break;
+      }
+      // Unique collision with a non-bot user — pick a new name and retry.
+      if (!/unique|duplicate/i.test(error.message) || attempt === 4) {
+        upErr = error;
+        break;
+      }
+      taken.add(displayName);
+      displayName = ensureUniqueDisplayName(generateStressDisplayName(), taken);
+      taken.add(displayName);
+    }
+    if (upErr) throw new Error(upErr.message);
+
+    bots.push({ id: created.user.id, display_name: displayName });
+  }
+
+  return bots.slice(0, needed).map((b) => b.id);
+}
+
+async function silentUpsertMembers(
+  admin: SupabaseClient,
+  perRoom: Record<string, number>,
+  botIds: string[]
+): Promise<void> {
+  let offset = 0;
+  const now = new Date().toISOString();
+  const rows: { room_id: string; user_id: string; role: string; last_seen: string }[] = [];
+  for (const [roomId, count] of Object.entries(perRoom)) {
+    const slice = botIds.slice(offset, offset + count);
+    offset += count;
+    for (const userId of slice) {
+      rows.push({
+        room_id: roomId,
+        user_id: userId,
+        role: "listener",
+        last_seen: now,
+      });
+    }
+  }
+  if (!rows.length) return;
+  const { error } = await admin.from("room_members").upsert(rows, {
+    onConflict: "room_id,user_id",
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function startStressRun(
+  admin: SupabaseClient,
+  raw: StressStartInput
+): Promise<{ run: StressRun } | { error: string; status: number }> {
+  const validated = validateStressStartInput(raw);
+  if (!validated.ok) return { error: validated.error, status: 400 };
+
+  const active = await getActiveStressRun(admin);
+  if (active) {
+    return { error: "A stress run is already active; stop it first", status: 409 };
+  }
+
+  const slugs = [validated.primaryRoomSlug, ...validated.secondaryRoomSlugs];
+  const { data: rooms, error: roomErr } = await admin
+    .from("rooms")
+    .select("id, slug")
+    .in("slug", slugs);
+  if (roomErr) return { error: roomErr.message, status: 500 };
+  if (!rooms || rooms.length !== slugs.length) {
+    return { error: "One or more rooms not found", status: 404 };
+  }
+
+  const bySlug = new Map(rooms.map((r) => [r.slug, r.id]));
+  const primaryId = bySlug.get(validated.primaryRoomSlug)!;
+  const secondaryIds = validated.secondaryRoomSlugs.map((s) => bySlug.get(s)!);
+  const roomIds = [primaryId, ...secondaryIds];
+  const perRoom = distributeStressCounts(validated.totalListeners, roomIds);
+
+  let botIds: string[] = [];
+  try {
+    botIds = await ensureBotPool(admin, validated.totalListeners);
+    await silentUpsertMembers(admin, perRoom, botIds);
+
+    const expiresAt = new Date(
+      Date.now() + validated.ttlMinutes * 60_000
+    ).toISOString();
+
+    const { data: run, error } = await admin
+      .from("stress_runs")
+      .insert({
+        status: "running",
+        mode: "presence",
+        primary_room_id: primaryId,
+        secondary_room_ids: secondaryIds,
+        total_listeners: validated.totalListeners,
+        per_room_counts: perRoom,
+        bot_user_ids: botIds,
+        expires_at: expiresAt,
+      })
+      .select("*")
+      .single();
+
+    if (error || !run) {
+      await teardownMemberships(admin, roomIds, botIds);
+      return { error: error?.message ?? "failed to create run", status: 500 };
+    }
+
+    console.info(
+      JSON.stringify({
+        event: "stress_start",
+        runId: run.id,
+        total: validated.totalListeners,
+        rooms: slugs,
+      })
+    );
+    return { run: mapRun(run) };
+  } catch (e) {
+    await teardownMemberships(admin, roomIds, botIds);
+    const message = e instanceof Error ? e.message : "start failed";
+    await admin.from("stress_runs").insert({
+      status: "failed",
+      mode: "presence",
+      primary_room_id: primaryId,
+      secondary_room_ids: secondaryIds,
+      total_listeners: validated.totalListeners,
+      per_room_counts: perRoom,
+      bot_user_ids: botIds,
+      expires_at: new Date().toISOString(),
+      stopped_at: new Date().toISOString(),
+      error: message,
+    });
+    return { error: message, status: 500 };
+  }
+}
+
+export async function stopStressRun(
+  admin: SupabaseClient,
+  reason: "stopped" | "expired"
+): Promise<{ ok: true; run: StressRun | null }> {
+  const active = await getActiveStressRun(admin);
+  if (!active) return { ok: true, run: null };
+
+  const roomIds = [active.primary_room_id, ...active.secondary_room_ids];
+  await teardownMemberships(admin, roomIds, active.bot_user_ids);
+
+  const { data } = await admin
+    .from("stress_runs")
+    .update({
+      status: reason,
+      stopped_at: new Date().toISOString(),
+    })
+    .eq("id", active.id)
+    .select("*")
+    .single();
+
+  console.info(
+    JSON.stringify({ event: `stress_${reason}`, runId: active.id })
+  );
+  return { ok: true, run: data ? mapRun(data) : active };
+}
+
+export async function tickStressRun(
+  admin: SupabaseClient
+): Promise<{ ok: true; action: "idle" | "heartbeat" | "expired" }> {
+  const active = await getActiveStressRun(admin);
+  if (!active) return { ok: true, action: "idle" };
+
+  if (Date.now() >= Date.parse(active.expires_at)) {
+    await stopStressRun(admin, "expired");
+    return { ok: true, action: "expired" };
+  }
+
+  const roomIds = [active.primary_room_id, ...active.secondary_room_ids];
+  const now = new Date().toISOString();
+  await admin
+    .from("room_members")
+    .update({ last_seen: now })
+    .in("room_id", roomIds)
+    .in("user_id", active.bot_user_ids);
+
+  console.info(
+    JSON.stringify({ event: "stress_tick", runId: active.id, action: "heartbeat" })
+  );
+  return { ok: true, action: "heartbeat" };
 }

@@ -8,7 +8,7 @@ export async function POST(request: Request) {
   }
   const admin = createServiceClient();
   const result = await tickStressRun(admin);
-  if (!result.ok) {
+  if (result.ok === false) {
     return NextResponse.json({ error: result.error }, { status: 500 });
   }
   return NextResponse.json(result);

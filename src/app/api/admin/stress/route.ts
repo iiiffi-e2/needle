@@ -39,7 +39,7 @@ export async function DELETE(request: Request) {
   if (!assertStressSecret(request)) return unauthorized();
   const admin = createServiceClient();
   const result = await stopStressRun(admin, "stopped");
-  if (!result.ok) {
+  if (result.ok === false) {
     return NextResponse.json({ error: result.error }, { status: 500 });
   }
   return NextResponse.json(result);

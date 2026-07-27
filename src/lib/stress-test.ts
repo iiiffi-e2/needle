@@ -318,7 +318,7 @@ export async function startStressRun(
   raw: StressStartInput
 ): Promise<{ run: StressRun } | { error: string; status: number }> {
   const validated = validateStressStartInput(raw);
-  if (!validated.ok) return { error: validated.error, status: 400 };
+  if (validated.ok === false) return { error: validated.error, status: 400 };
 
   const active = await getActiveStressRun(admin);
   if (active) {
@@ -479,7 +479,7 @@ export async function tickStressRun(
 
   if (Date.now() >= Date.parse(active.expires_at)) {
     const stopped = await stopStressRun(admin, "expired");
-    if (!stopped.ok) return { ok: false, error: stopped.error };
+    if (stopped.ok === false) return { ok: false, error: stopped.error };
     return { ok: true, action: "expired" };
   }
 

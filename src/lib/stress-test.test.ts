@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  botsByRoomFromRun,
   distributeStressCounts,
+  stressReactCountForRoom,
   validateStressStartInput,
   MAX_STRESS_LISTENERS,
 } from "./stress-test";
@@ -78,5 +80,32 @@ describe("generateStressDisplayName", () => {
     const next = ensureUniqueDisplayName("VoidMoth", taken, () => 0.5);
     expect(next).not.toBe("VoidMoth");
     expect(next.startsWith("VoidMoth")).toBe(true);
+  });
+});
+
+describe("botsByRoomFromRun", () => {
+  it("slices bot ids in inject order per room counts", () => {
+    expect(
+      botsByRoomFromRun({
+        per_room_counts: { a: 3, b: 2 },
+        bot_user_ids: ["1", "2", "3", "4", "5"],
+      })
+    ).toEqual({ a: ["1", "2", "3"], b: ["4", "5"] });
+  });
+});
+
+describe("stressReactCountForRoom", () => {
+  it("returns 0 for empty rooms", () => {
+    expect(stressReactCountForRoom(0)).toBe(0);
+  });
+
+  it("returns 0 when skip roll hits", () => {
+    expect(stressReactCountForRoom(100, () => 0.1)).toBe(0);
+  });
+
+  it("caps around 3% when not skipped", () => {
+    expect(stressReactCountForRoom(100, () => 0.5)).toBe(3);
+    expect(stressReactCountForRoom(10, () => 0.5)).toBe(1);
+    expect(stressReactCountForRoom(250, () => 0.5)).toBe(8);
   });
 });

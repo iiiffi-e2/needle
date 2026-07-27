@@ -126,7 +126,7 @@ CRON_SECRET=...          # required on Vercel so scheduled ticks authenticate
 | Max rooms | 1 primary + up to 2 secondary |
 | Distribution | ~80% primary / remainder on secondaries |
 | Default / max TTL | 20 / 30 minutes (auto-stop removes memberships) |
-| Mode (v1) | `presence` only (DB members + cron heartbeats) |
+| Mode (v1) | `presence` only (DB members + cron heartbeats + light crowd reacts on tick) |
 | Side effects | Silent — no join chat, energy, Needlebot, or first-join stats |
 | Bot identities | Reusable pool; fun display names; tagged `is_stress_bot` |
 

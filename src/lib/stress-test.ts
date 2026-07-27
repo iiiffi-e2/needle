@@ -1,5 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { CROWD_COLORS } from "@/lib/design-tokens";
+import {
+  CROWD_COLORS,
+  REACT_GLYPHS,
+  resolveUserColor,
+} from "@/lib/design-tokens";
 import {
   ensureUniqueDisplayName,
   generateStressDisplayName,
@@ -10,6 +14,47 @@ export const MAX_STRESS_LISTENERS = 250;
 export const MAX_STRESS_ROOMS = 3;
 export const DEFAULT_STRESS_TTL_MINUTES = 20;
 export const MAX_STRESS_TTL_MINUTES = 30;
+
+/** How many bots should react per room on a tick (~3%, clamped). */
+export function stressReactCountForRoom(
+  botCountInRoom: number,
+  rng: () => number = Math.random
+): number {
+  if (botCountInRoom <= 0) return 0;
+  const target = Math.max(1, Math.round(botCountInRoom * 0.03));
+  const capped = Math.min(8, botCountInRoom, target);
+  // Occasionally skip reacts entirely (~20%) so ticks aren't metronomic
+  if (rng() < 0.2) return 0;
+  return capped;
+}
+
+/** Rebuild per-room bot slices from the ordered pool used at inject time. */
+export function botsByRoomFromRun(run: {
+  per_room_counts: Record<string, number>;
+  bot_user_ids: string[];
+}): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  let offset = 0;
+  for (const [roomId, count] of Object.entries(run.per_room_counts)) {
+    out[roomId] = run.bot_user_ids.slice(offset, offset + count);
+    offset += count;
+  }
+  return out;
+}
+
+function pickRandomIds(
+  ids: string[],
+  n: number,
+  rng: () => number = Math.random
+): string[] {
+  if (n <= 0 || ids.length === 0) return [];
+  const copy = [...ids];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [copy[i], copy[j]] = [copy[j]!, copy[i]!];
+  }
+  return copy.slice(0, Math.min(n, copy.length));
+}
 
 export function distributeStressCounts(
   total: number,
@@ -511,8 +556,56 @@ export async function tickStressRun(
     return { ok: false, error: error.message };
   }
 
+  // Best-effort crowd reacts — never fail the tick if broadcast hiccups.
+  try {
+    await broadcastStressReacts(admin, active);
+  } catch (e) {
+    console.info(
+      JSON.stringify({
+        event: "stress_tick_reacts_failed",
+        runId: active.id,
+        error: e instanceof Error ? e.message : "react broadcast failed",
+      })
+    );
+  }
+
   console.info(
     JSON.stringify({ event: "stress_tick", runId: active.id, action: "heartbeat" })
   );
   return { ok: true, action: "heartbeat" };
+}
+
+async function broadcastStressReacts(
+  admin: SupabaseClient,
+  run: StressRun
+): Promise<void> {
+  const byRoom = botsByRoomFromRun(run);
+  const allBotIds = Object.values(byRoom).flat();
+  if (!allBotIds.length) return;
+
+  const { data: profiles } = await admin
+    .from("users")
+    .select("id, avatar_color")
+    .in("id", allBotIds);
+  const colorById = new Map(
+    (profiles ?? []).map((p) => [p.id as string, p.avatar_color as string | null])
+  );
+
+  for (const [roomId, botIds] of Object.entries(byRoom)) {
+    const n = stressReactCountForRoom(botIds.length);
+    const selected = pickRandomIds(botIds, n);
+    if (!selected.length) continue;
+
+    const channel = admin.channel(`room:${roomId}`);
+    try {
+      for (const userId of selected) {
+        const glyph =
+          REACT_GLYPHS[Math.floor(Math.random() * REACT_GLYPHS.length)]!;
+        const color = resolveUserColor(userId, colorById.get(userId));
+        await channel.httpSend("crowd_react", { userId, glyph, color });
+      }
+    } finally {
+      await admin.removeChannel(channel);
+    }
+  }
 }

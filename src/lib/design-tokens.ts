@@ -117,9 +117,10 @@ function crowdDepthZ(topPct: number): number {
 export const CROWD_PLACE_SIZE = 64;
 
 export const CROWD_FLOOR = {
-  leftMin: 11,
-  leftMax: 86,
-  topMin: 48,
+  leftMin: 8,
+  leftMax: 88,
+  /** Near the stage apron (floor gradient starts ~42%). */
+  topMin: 43,
   topMax: 84,
   frontTopGate: 66,
   frontLeftMin: 46,
@@ -293,13 +294,13 @@ function tryTakeSlot(
   sepX = CROWD_MIN_SEP_X,
   sepY = CROWD_MIN_SEP_Y
 ): boolean {
-  if (
-    crowdOverlapsUiChrome(
-      candidate.leftPct,
-      candidate.topPct,
-      Math.max(candidate.size, CROWD_PLACE_SIZE)
-    )
-  ) {
+  // Use the avatar's real size (+ slight pad) so mid-left floor isn't
+  // emptied by worst-case PLACE_SIZE chrome rejection.
+  const chromeSize = Math.max(candidate.size, 48) + 4;
+  if (crowdOverlapsUiChrome(candidate.leftPct, candidate.topPct, chromeSize)) {
+    return false;
+  }
+  if (topPctBlockedByFrontGate(candidate.leftPct, candidate.topPct)) {
     return false;
   }
   if (taken.some((s) => centersTooClose(s, candidate, sepX, sepY))) {
@@ -309,42 +310,66 @@ function tryTakeSlot(
   return true;
 }
 
-/** Spaced brick rows across the dance floor (back → front). */
+function topPctBlockedByFrontGate(leftPct: number, topPct: number): boolean {
+  return (
+    topPct >= CROWD_FLOOR.frontTopGate && leftPct < CROWD_FLOOR.frontLeftMin
+  );
+}
+
+/** Seeded 0..1 — stable across reloads for the same attempt index. */
+function crowdUnit(seed: number): number {
+  const x = Math.sin(seed * 12.9898 + 78.233) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+/**
+ * Organic dance-floor seats: hash-jittered candidates across the full apron,
+ * greedily kept when they clear chrome and stay a soft distance apart.
+ */
 function buildBrickSlots(count: number): CrowdSlot[] {
   const taken: CrowdSlot[] = [];
+  let sepX = CROWD_MIN_SEP_X;
+  let sepY = CROWD_MIN_SEP_Y;
+  let attemptBase = 0;
 
-  const fill = (sepX: number, sepY: number, topMax: number) => {
-    for (let top = 48, row = 0; top <= topMax && taken.length < count; top += sepY, row += 1) {
-      const leftMin = top >= 66 ? 46 : 11;
-      const leftMax = 86;
-      const stagger = row % 2 === 1 ? sepX / 2 : 0;
-      for (
-        let left = leftMin + stagger;
-        left <= leftMax && taken.length < count;
-        left += sepX
-      ) {
-        const seed = Math.round(left * 10 + top * 3 + row * 17);
-        tryTakeSlot(
-          {
-            leftPct: left,
-            topPct: top,
-            size: 44 + (seed % 20),
-            dance: (seed & 1) === 1,
-          },
-          taken,
-          sepX,
-          sepY
-        );
-      }
+  for (let round = 0; round < 24 && taken.length < count; round++) {
+    const before = taken.length;
+    const attempts = Math.max(count * 40, 100);
+    for (let i = 0; i < attempts && taken.length < count; i++) {
+      const seed = attemptBase + i;
+      const u1 = crowdUnit(seed * 17 + count * 3 + 1);
+      const u2 = crowdUnit(seed * 31 + count * 5 + 7);
+      const u3 = crowdUnit(seed * 47 + 11);
+      const u4 = crowdUnit(seed * 59 + 13);
+
+      const leftPct =
+        CROWD_FLOOR.leftMin +
+        u1 * (CROWD_FLOOR.leftMax - CROWD_FLOOR.leftMin);
+      const topPct =
+        CROWD_FLOOR.topMin +
+        u2 * (CROWD_FLOOR.topMax - CROWD_FLOOR.topMin);
+      const size = 42 + Math.floor(u3 * 22);
+
+      tryTakeSlot(
+        {
+          leftPct,
+          topPct,
+          size,
+          dance: u4 > 0.45,
+        },
+        taken,
+        sepX,
+        sepY
+      );
     }
-  };
-
-  // Full minimum separation first; only tighten if the floor is saturated.
-  fill(CROWD_MIN_SEP_X, CROWD_MIN_SEP_Y, 84);
-  if (taken.length < count) {
-    fill(CROWD_MIN_SEP_X, CROWD_MIN_SEP_Y, 88);
+    attemptBase += attempts;
+    if (taken.length === before) {
+      sepX *= 0.92;
+      sepY *= 0.92;
+    }
   }
 
+  taken.sort((a, b) => a.topPct - b.topPct);
   return taken;
 }
 
@@ -394,24 +419,12 @@ export function assignCrowdLayout(listenerIds: string[]): CrowdLayoutItem[] {
 
   return listenerIds.map((userId, i) => {
     const h = hashUserId(userId);
-    const slot = slots[i];
-
-    if (!slot) {
-      // Floor saturated — still space by index rather than stacking in the center.
-      const leftPct = 46 + (i % 5) * CROWD_MIN_SEP_X;
-      const topPct = 48 + Math.floor(i / 5) * CROWD_MIN_SEP_Y;
-      const size = 44 + (h % 20);
-      const dance = (h & 1) === 1;
-      return {
-        userId,
-        leftPct,
-        topPct,
-        size,
-        dance,
-        zIndex: crowdDepthZ(topPct),
-        animDuration: dance ? 1.7 + i * 0.1 : 3 + i * 0.18,
-      };
-    }
+    const slot = slots[i] ?? {
+      leftPct: 55,
+      topPct: 58,
+      size: 44 + (h % 20),
+      dance: (h & 1) === 1,
+    };
 
     return {
       userId,

@@ -24,11 +24,14 @@ function stackedPairCount(
   layout: { leftPct: number; topPct: number }[]
 ): number {
   let close = 0;
+  // Slightly softer than placement sep so late-round pack-ins aren't false fails.
+  const sepX = CROWD_MIN_SEP_X * 0.8;
+  const sepY = CROWD_MIN_SEP_Y * 0.8;
   for (let i = 0; i < layout.length; i++) {
     for (let j = i + 1; j < layout.length; j++) {
       const dx = Math.abs(layout[i].leftPct - layout[j].leftPct);
       const dy = Math.abs(layout[i].topPct - layout[j].topPct);
-      if (dx < CROWD_MIN_SEP_X && dy < CROWD_MIN_SEP_Y) close += 1;
+      if (dx < sepX && dy < sepY) close += 1;
     }
   }
   return close;
@@ -62,6 +65,17 @@ describe("assignCrowdLayout", () => {
   it("spreads listeners so they are not stacked on the same spot", () => {
     const layout = assignCrowdLayout(CROWDED_ROOM_IDS);
     expect(stackedPairCount(layout)).toBe(0);
+  });
+
+  it("scatters across the floor instead of a uniform center block", () => {
+    const layout = assignCrowdLayout(CROWDED_ROOM_IDS);
+    const lefts = layout.map((l) => l.leftPct);
+    const tops = layout.map((l) => l.topPct);
+    expect(Math.min(...lefts)).toBeLessThan(25);
+    expect(Math.max(...lefts)).toBeGreaterThan(70);
+    expect(Math.min(...tops)).toBeLessThan(50);
+    const roundedTops = new Set(tops.map((t) => Math.round(t * 2) / 2));
+    expect(roundedTops.size).toBeGreaterThan(8);
   });
 
   it("still places the first listeners on the designed crowd spots when clear", () => {

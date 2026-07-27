@@ -34,6 +34,10 @@ export const VENUE_H = 716;
  */
 export const CROWD_UI_MAX_Z = 25;
 
+/** Min center-to-center separation (%). Mild overlap OK; stacking is not. */
+export const CROWD_MIN_SEP_X = 7;
+export const CROWD_MIN_SEP_Y = 6;
+
 /** Percent rects covering the desktop now-playing panel and reaction rail. */
 const CROWD_UI_EXCLUSIONS = [
   // Now spinning panel — bottom-left
@@ -87,27 +91,123 @@ export function crowdOverlapsUiChrome(
   );
 }
 
-function placeAwayFromUi(
-  seed: number,
-  size: number
-): { leftPct: number; topPct: number } {
-  for (let attempt = 0; attempt < 24; attempt++) {
-    const leftPct = 12 + ((seed + attempt * 17) % 76);
-    const topPct = 48 + (((seed >> 5) + attempt * 13) % 28);
-    if (!crowdOverlapsUiChrome(leftPct, topPct, size)) {
-      return { leftPct, topPct };
-    }
-  }
-  // Safe center-floor fallback if hash probes all land in chrome.
-  return {
-    leftPct: 48 + (seed % 16),
-    topPct: 54 + ((seed >> 3) % 10),
-  };
+function centersTooClose(
+  a: { leftPct: number; topPct: number },
+  b: { leftPct: number; topPct: number },
+  sepX = CROWD_MIN_SEP_X,
+  sepY = CROWD_MIN_SEP_Y
+): boolean {
+  return (
+    Math.abs(a.leftPct - b.leftPct) < sepX &&
+    Math.abs(a.topPct - b.topPct) < sepY
+  );
 }
 
 function crowdDepthZ(topPct: number): number {
   // Lower on the floor → higher among the crowd, but always ≤ CROWD_UI_MAX_Z.
   return Math.max(1, Math.min(CROWD_UI_MAX_Z, Math.round(topPct / 4)));
+}
+
+/** Worst-case blob diameter used when testing chrome / neighbor clearance. */
+const CROWD_PLACE_SIZE = 64;
+
+type CrowdSlot = {
+  leftPct: number;
+  topPct: number;
+  size: number;
+  dance: boolean;
+};
+
+function tryTakeSlot(
+  candidate: CrowdSlot,
+  taken: CrowdSlot[],
+  sepX = CROWD_MIN_SEP_X,
+  sepY = CROWD_MIN_SEP_Y
+): boolean {
+  if (
+    crowdOverlapsUiChrome(
+      candidate.leftPct,
+      candidate.topPct,
+      Math.max(candidate.size, CROWD_PLACE_SIZE)
+    )
+  ) {
+    return false;
+  }
+  if (taken.some((s) => centersTooClose(s, candidate, sepX, sepY))) {
+    return false;
+  }
+  taken.push(candidate);
+  return true;
+}
+
+/** Spaced brick rows across the dance floor (back → front). */
+function buildBrickSlots(count: number): CrowdSlot[] {
+  const taken: CrowdSlot[] = [];
+
+  const fill = (sepX: number, sepY: number, topMax: number) => {
+    for (let top = 48, row = 0; top <= topMax && taken.length < count; top += sepY, row += 1) {
+      const leftMin = top >= 66 ? 46 : 11;
+      const leftMax = 86;
+      const stagger = row % 2 === 1 ? sepX / 2 : 0;
+      for (
+        let left = leftMin + stagger;
+        left <= leftMax && taken.length < count;
+        left += sepX
+      ) {
+        const seed = Math.round(left * 10 + top * 3 + row * 17);
+        tryTakeSlot(
+          {
+            leftPct: left,
+            topPct: top,
+            size: 44 + (seed % 20),
+            dance: (seed & 1) === 1,
+          },
+          taken,
+          sepX,
+          sepY
+        );
+      }
+    }
+  };
+
+  // Full minimum separation first; only tighten if the floor is saturated.
+  fill(CROWD_MIN_SEP_X, CROWD_MIN_SEP_Y, 84);
+  if (taken.length < count) {
+    fill(CROWD_MIN_SEP_X, CROWD_MIN_SEP_Y, 88);
+  }
+
+  return taken;
+}
+
+/**
+ * Small rooms keep the hand-authored CROWD_SPEC scatter. Larger rooms use a
+ * brick-row grid so overflow listeners never stack on the same spot.
+ */
+function buildCrowdSlots(count: number): CrowdSlot[] {
+  if (count <= CROWD_SPEC.length) {
+    const taken: CrowdSlot[] = [];
+    for (let i = 0; i < count; i++) {
+      const spec = CROWD_SPEC[i];
+      tryTakeSlot(
+        {
+          leftPct: (spec.x / VENUE_W) * 100,
+          topPct: (spec.y / VENUE_H) * 100,
+          size: spec.s,
+          dance: spec.dance,
+        },
+        taken
+      );
+    }
+    if (taken.length < count) {
+      for (const slot of buildBrickSlots(count)) {
+        if (taken.length >= count) break;
+        tryTakeSlot(slot, taken);
+      }
+    }
+    return taken;
+  }
+
+  return buildBrickSlots(count);
 }
 
 export interface CrowdLayoutItem {
@@ -121,37 +221,37 @@ export interface CrowdLayoutItem {
 }
 
 export function assignCrowdLayout(listenerIds: string[]): CrowdLayoutItem[] {
+  const slots = buildCrowdSlots(listenerIds.length);
+
   return listenerIds.map((userId, i) => {
-    const spec = CROWD_SPEC[i % CROWD_SPEC.length];
     const h = hashUserId(userId);
+    const slot = slots[i];
 
-    let leftPct: number;
-    let topPct: number;
-    let size: number;
-    let dance: boolean;
-
-    if (i < CROWD_SPEC.length) {
-      leftPct = (spec.x / VENUE_W) * 100;
-      topPct = (spec.y / VENUE_H) * 100;
-      size = spec.s;
-      dance = spec.dance;
-      if (crowdOverlapsUiChrome(leftPct, topPct, size)) {
-        ({ leftPct, topPct } = placeAwayFromUi(h ^ (i * 97), size));
-      }
-    } else {
-      size = 44 + (h % 20);
-      dance = (h & 1) === 1;
-      ({ leftPct, topPct } = placeAwayFromUi(h ^ (i * 31), size));
+    if (!slot) {
+      // Floor saturated — still space by index rather than stacking in the center.
+      const leftPct = 46 + (i % 5) * CROWD_MIN_SEP_X;
+      const topPct = 48 + Math.floor(i / 5) * CROWD_MIN_SEP_Y;
+      const size = 44 + (h % 20);
+      const dance = (h & 1) === 1;
+      return {
+        userId,
+        leftPct,
+        topPct,
+        size,
+        dance,
+        zIndex: crowdDepthZ(topPct),
+        animDuration: dance ? 1.7 + i * 0.1 : 3 + i * 0.18,
+      };
     }
 
     return {
       userId,
-      leftPct,
-      topPct,
-      size,
-      dance,
-      zIndex: crowdDepthZ(topPct),
-      animDuration: dance ? 1.7 + i * 0.1 : 3 + i * 0.18,
+      leftPct: slot.leftPct,
+      topPct: slot.topPct,
+      size: slot.size,
+      dance: slot.dance,
+      zIndex: crowdDepthZ(slot.topPct),
+      animDuration: slot.dance ? 1.7 + i * 0.1 : 3 + i * 0.18,
     };
   });
 }

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   assignCrowdLayout,
+  CROWD_MIN_SEP_X,
+  CROWD_MIN_SEP_Y,
   CROWD_SPEC,
   CROWD_UI_MAX_Z,
   crowdOverlapsUiChrome,
@@ -8,6 +10,20 @@ import {
 
 /** IDs that hash into the bottom-left / bottom-right under the old overflow formula. */
 const CROWDED_ROOM_IDS = Array.from({ length: 40 }, (_, i) => `stress-user-${i}`);
+
+function stackedPairCount(
+  layout: { leftPct: number; topPct: number }[]
+): number {
+  let close = 0;
+  for (let i = 0; i < layout.length; i++) {
+    for (let j = i + 1; j < layout.length; j++) {
+      const dx = Math.abs(layout[i].leftPct - layout[j].leftPct);
+      const dy = Math.abs(layout[i].topPct - layout[j].topPct);
+      if (dx < CROWD_MIN_SEP_X && dy < CROWD_MIN_SEP_Y) close += 1;
+    }
+  }
+  return close;
+}
 
 describe("assignCrowdLayout", () => {
   it("keeps crowd z-index below the now-playing / reacts UI layer", () => {
@@ -27,13 +43,18 @@ describe("assignCrowdLayout", () => {
     }
   });
 
+  it("spreads listeners so they are not stacked on the same spot", () => {
+    const layout = assignCrowdLayout(CROWDED_ROOM_IDS);
+    expect(stackedPairCount(layout)).toBe(0);
+  });
+
   it("still places the first listeners on the designed crowd spots when clear", () => {
     const ids = CROWD_SPEC.map((_, i) => `seed-${i}`);
     const layout = assignCrowdLayout(ids);
     expect(layout).toHaveLength(CROWD_SPEC.length);
     expect(layout[0]?.userId).toBe("seed-0");
-    expect(layout.every((item) => item.leftPct > 0 && item.topPct > 0)).toBe(
-      true
-    );
+    // Designed back-row spot should stay put when it clears UI chrome.
+    expect(layout[0]?.leftPct).toBeCloseTo((CROWD_SPEC[0].x / 940) * 100, 5);
+    expect(layout[0]?.topPct).toBeCloseTo((CROWD_SPEC[0].y / 716) * 100, 5);
   });
 });

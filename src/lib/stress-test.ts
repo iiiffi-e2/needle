@@ -148,6 +148,21 @@ async function teardownMemberships(
     .in("room_id", roomIds)
     .in("user_id", botUserIds);
   if (error) throw new Error(error.message);
+  // Bulk deletes often don't fan out reliably over Realtime; bump rooms so
+  // connected clients (subscribed to rooms UPDATE) refetch members immediately.
+  await notifyRoomsChanged(admin, roomIds);
+}
+
+/** Touch rooms.updated_at so in-room clients refresh via existing Realtime hook. */
+async function notifyRoomsChanged(
+  admin: SupabaseClient,
+  roomIds: string[]
+): Promise<void> {
+  if (!roomIds.length) return;
+  await admin
+    .from("rooms")
+    .update({ updated_at: new Date().toISOString() })
+    .in("id", roomIds);
 }
 
 function stressBotEmail(): string {
@@ -379,6 +394,7 @@ export async function startStressRun(
 
     claimedRunId = run.id;
     await silentUpsertMembers(admin, perRoom, botIds);
+    await notifyRoomsChanged(admin, roomIds);
 
     console.info(
       JSON.stringify({

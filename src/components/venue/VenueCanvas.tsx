@@ -905,7 +905,7 @@ export function VenueCanvas({
                         userColors.get(c.userId)
                       )}
                       size={c.size}
-                      dance={c.dance}
+                      dance={c.dance && !(isSelf && isDragging)}
                       animDuration={c.animDuration}
                     />
                   </div>

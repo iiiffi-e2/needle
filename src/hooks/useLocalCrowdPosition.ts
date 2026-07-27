@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  clampCrowdFloorPosition,
   loadCrowdPos,
   saveCrowdPos,
+  slideCrowdFloorPosition,
   type CrowdPos,
 } from "@/lib/design-tokens";
 
@@ -16,6 +16,7 @@ type DragState = {
   startTop: number;
   venue: DOMRect;
   element: HTMLElement;
+  lastValid: CrowdPos;
   onMove: (ev: PointerEvent) => void;
   onUp: (ev: PointerEvent) => void;
 };
@@ -24,6 +25,13 @@ export function useLocalCrowdPosition(roomSlug: string, enabled: boolean) {
   const [override, setOverride] = useState<CrowdPos | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef<DragState | null>(null);
+  const overrideRef = useRef<CrowdPos | null>(null);
+  const rafRef = useRef(0);
+  const pendingRef = useRef<CrowdPos | null>(null);
+
+  useEffect(() => {
+    overrideRef.current = override;
+  }, [override]);
 
   useEffect(() => {
     if (!enabled || !roomSlug) {
@@ -35,6 +43,7 @@ export function useLocalCrowdPosition(roomSlug: string, enabled: boolean) {
 
   useEffect(() => {
     return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
       const drag = dragRef.current;
       if (!drag) return;
       window.removeEventListener("pointermove", drag.onMove);
@@ -60,11 +69,11 @@ export function useLocalCrowdPosition(roomSlug: string, enabled: boolean) {
         ?.getBoundingClientRect();
       if (!venue || venue.width <= 0 || venue.height <= 0) return;
 
-      // Caller must set data-left-pct / data-top-pct on the draggable node
-      // for the initial assigned slot when override is null.
       const el = event.currentTarget;
-      const startLeft = override?.leftPct ?? Number(el.dataset.leftPct);
-      const startTop = override?.topPct ?? Number(el.dataset.topPct);
+      const startLeft =
+        overrideRef.current?.leftPct ?? Number(el.dataset.leftPct);
+      const startTop =
+        overrideRef.current?.topPct ?? Number(el.dataset.topPct);
       if (!Number.isFinite(startLeft) || !Number.isFinite(startTop)) return;
 
       event.preventDefault();
@@ -75,11 +84,19 @@ export function useLocalCrowdPosition(roomSlug: string, enabled: boolean) {
         if (!drag || ev.pointerId !== drag.pointerId) return;
         const dxPct = ((ev.clientX - drag.originX) / drag.venue.width) * 100;
         const dyPct = ((ev.clientY - drag.originY) / drag.venue.height) * 100;
-        const next = clampCrowdFloorPosition(
+        const next = slideCrowdFloorPosition(
           drag.startLeft + dxPct,
-          drag.startTop + dyPct
+          drag.startTop + dyPct,
+          drag.lastValid
         );
-        setOverride(next);
+        drag.lastValid = next;
+        pendingRef.current = next;
+        if (rafRef.current) return;
+        rafRef.current = requestAnimationFrame(() => {
+          rafRef.current = 0;
+          const pending = pendingRef.current;
+          if (pending) setOverride(pending);
+        });
       };
 
       const onUp = (ev: PointerEvent) => {
@@ -91,12 +108,16 @@ export function useLocalCrowdPosition(roomSlug: string, enabled: boolean) {
         if (drag.element.hasPointerCapture(ev.pointerId)) {
           drag.element.releasePointerCapture(ev.pointerId);
         }
+        if (rafRef.current) {
+          cancelAnimationFrame(rafRef.current);
+          rafRef.current = 0;
+        }
+        const finalPos = pendingRef.current ?? drag.lastValid;
+        pendingRef.current = null;
         dragRef.current = null;
         setIsDragging(false);
-        setOverride((pos) => {
-          if (pos) saveCrowdPos(roomSlug, pos);
-          return pos;
-        });
+        setOverride(finalPos);
+        saveCrowdPos(roomSlug, finalPos);
       };
 
       dragRef.current = {
@@ -107,6 +128,7 @@ export function useLocalCrowdPosition(roomSlug: string, enabled: boolean) {
         startTop,
         venue,
         element: el,
+        lastValid: { leftPct: startLeft, topPct: startTop },
         onMove,
         onUp,
       };
@@ -116,7 +138,7 @@ export function useLocalCrowdPosition(roomSlug: string, enabled: boolean) {
       window.addEventListener("pointerup", onUp);
       window.addEventListener("pointercancel", onUp);
     },
-    [enabled, override, roomSlug]
+    [enabled, roomSlug]
   );
 
   return { override, isDragging, onPointerDown };

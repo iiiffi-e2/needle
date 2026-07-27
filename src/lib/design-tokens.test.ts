@@ -14,6 +14,7 @@ import {
   loadCrowdPos,
   parseCrowdPos,
   saveCrowdPos,
+  slideCrowdFloorPosition,
 } from "./design-tokens";
 
 /** IDs that hash into the bottom-left / bottom-right under the old overflow formula. */
@@ -96,10 +97,44 @@ describe("crowd floor position", () => {
     expect(isValidCrowdFloorPosition(pos.leftPct, pos.topPct)).toBe(true);
   });
 
-  it("forces front-row seats right of the player zone", () => {
+  it("keeps front-row pointer aims out of the player zone", () => {
     const pos = clampCrowdFloorPosition(20, 72);
-    expect(pos.leftPct).toBeGreaterThanOrEqual(CROWD_FLOOR.frontLeftMin);
     expect(isValidCrowdFloorPosition(pos.leftPct, pos.topPct)).toBe(true);
+    // Either stay above the gate or shift right of the player — never both wrong.
+    expect(
+      pos.topPct < CROWD_FLOOR.frontTopGate ||
+        pos.leftPct >= CROWD_FLOOR.frontLeftMin
+    ).toBe(true);
+  });
+
+  it("slides continuously along a drag path through the player corner", () => {
+    let from = { leftPct: 30, topPct: 55 };
+    const path = [58, 62, 66, 70, 74, 78].map((top) => {
+      from = slideCrowdFloorPosition(30, top, from);
+      return from;
+    });
+    for (let i = 1; i < path.length; i++) {
+      const jump = Math.hypot(
+        path[i].leftPct - path[i - 1].leftPct,
+        path[i].topPct - path[i - 1].topPct
+      );
+      expect(jump).toBeLessThan(10);
+      expect(
+        isValidCrowdFloorPosition(path[i].leftPct, path[i].topPct)
+      ).toBe(true);
+    }
+  });
+
+  it("does not hard-jump when crossing the front-row gate vertically", () => {
+    const above = clampCrowdFloorPosition(30, 64);
+    const below = clampCrowdFloorPosition(30, 68);
+    const jump = Math.hypot(
+      below.leftPct - above.leftPct,
+      below.topPct - above.topPct
+    );
+    expect(jump).toBeLessThan(12);
+    expect(isValidCrowdFloorPosition(above.leftPct, above.topPct)).toBe(true);
+    expect(isValidCrowdFloorPosition(below.leftPct, below.topPct)).toBe(true);
   });
 });
 

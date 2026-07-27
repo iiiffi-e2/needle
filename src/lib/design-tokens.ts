@@ -149,40 +149,80 @@ export function clampCrowdFloorPosition(
   topPct: number,
   size: number = CROWD_PLACE_SIZE
 ): { leftPct: number; topPct: number } {
-  let left = Math.min(CROWD_FLOOR.leftMax, Math.max(CROWD_FLOOR.leftMin, leftPct));
-  let top = Math.min(CROWD_FLOOR.topMax, Math.max(CROWD_FLOOR.topMin, topPct));
-  if (top >= CROWD_FLOOR.frontTopGate && left < CROWD_FLOOR.frontLeftMin) {
-    left = CROWD_FLOOR.frontLeftMin;
+  const clampEnv = (l: number, t: number) => ({
+    leftPct: Math.min(CROWD_FLOOR.leftMax, Math.max(CROWD_FLOOR.leftMin, l)),
+    topPct: Math.min(CROWD_FLOOR.topMax, Math.max(CROWD_FLOOR.topMin, t)),
+  });
+
+  const direct = clampEnv(leftPct, topPct);
+  if (isValidCrowdFloorPosition(direct.leftPct, direct.topPct, size)) {
+    return direct;
   }
-  if (isValidCrowdFloorPosition(left, top, size)) {
-    return { leftPct: left, topPct: top };
-  }
-  // Spiral search for nearest valid seat (step 2%).
-  for (let radius = 2; radius <= 40; radius += 2) {
-    for (let dx = -radius; dx <= radius; dx += 2) {
-      for (let dy = -radius; dy <= radius; dy += 2) {
-        const cand = {
-          leftPct: left + dx,
-          topPct: top + dy,
-        };
-        let cl = Math.min(
-          CROWD_FLOOR.leftMax,
-          Math.max(CROWD_FLOOR.leftMin, cand.leftPct)
-        );
-        let ct = Math.min(
-          CROWD_FLOOR.topMax,
-          Math.max(CROWD_FLOOR.topMin, cand.topPct)
-        );
-        if (ct >= CROWD_FLOOR.frontTopGate && cl < CROWD_FLOOR.frontLeftMin) {
-          cl = CROWD_FLOOR.frontLeftMin;
-        }
-        if (isValidCrowdFloorPosition(cl, ct, size)) {
-          return { leftPct: cl, topPct: ct };
-        }
-      }
+
+  // Nearest valid seat to the pointer (not first spiral hit) so drag stays continuous.
+  let best: { leftPct: number; topPct: number } | null = null;
+  let bestDist = Infinity;
+  const consider = (l: number, t: number) => {
+    const p = clampEnv(l, t);
+    if (!isValidCrowdFloorPosition(p.leftPct, p.topPct, size)) return;
+    const d =
+      (p.leftPct - leftPct) * (p.leftPct - leftPct) +
+      (p.topPct - topPct) * (p.topPct - topPct);
+    if (d < bestDist) {
+      bestDist = d;
+      best = p;
+    }
+  };
+
+  for (let radius = 0.5; radius <= 45; radius += 0.5) {
+    for (let dx = -radius; dx <= radius; dx += 0.5) {
+      consider(leftPct + dx, topPct + radius);
+      consider(leftPct + dx, topPct - radius);
+    }
+    for (let dy = -radius + 0.5; dy <= radius - 0.5; dy += 0.5) {
+      consider(leftPct + radius, topPct + dy);
+      consider(leftPct - radius, topPct + dy);
+    }
+    if (best && bestDist <= radius * radius) {
+      return best;
     }
   }
-  return { leftPct: 55, topPct: 58 };
+
+  return best ?? { leftPct: 55, topPct: 58 };
+}
+
+/** Prefer axis slides from `from` when a raw clamp would jump (non-convex floor). */
+export function slideCrowdFloorPosition(
+  leftPct: number,
+  topPct: number,
+  from: { leftPct: number; topPct: number },
+  size: number = CROWD_PLACE_SIZE
+): { leftPct: number; topPct: number } {
+  const desired = { leftPct, topPct };
+  const direct = clampCrowdFloorPosition(leftPct, topPct, size);
+  const jump = Math.hypot(
+    direct.leftPct - from.leftPct,
+    direct.topPct - from.topPct
+  );
+  if (jump <= 8) return direct;
+
+  const slideX = clampCrowdFloorPosition(leftPct, from.topPct, size);
+  const slideY = clampCrowdFloorPosition(from.leftPct, topPct, size);
+  const options = [direct, slideX, slideY, from];
+  let best = from;
+  let bestDist = Infinity;
+  for (const opt of options) {
+    if (!isValidCrowdFloorPosition(opt.leftPct, opt.topPct, size)) continue;
+    const d = Math.hypot(opt.leftPct - desired.leftPct, opt.topPct - desired.topPct);
+    const fromJump = Math.hypot(opt.leftPct - from.leftPct, opt.topPct - from.topPct);
+    // Prefer options that stay near both the pointer and the previous seat.
+    const score = d + fromJump * 0.5;
+    if (score < bestDist) {
+      bestDist = score;
+      best = opt;
+    }
+  }
+  return best;
 }
 
 export type CrowdPos = { leftPct: number; topPct: number };

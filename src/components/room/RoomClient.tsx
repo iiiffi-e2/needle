@@ -494,6 +494,7 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
         <div className="needle-venue-column">
           <div className="needle-venue-scene">
             <VenueCanvas
+              roomSlug={room.slug}
               currentDj={dj}
               isDjSleeping={isDjSleeping}
               sideDjs={sideDjs}

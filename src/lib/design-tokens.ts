@@ -34,6 +34,11 @@ export const VENUE_H = 716;
  */
 export const CROWD_UI_MAX_Z = 25;
 
+/** Self avatar always paints above other crowd members, still under chrome. */
+export function crowdZIndexForMember(baseZ: number, isSelf: boolean): number {
+  return isSelf ? CROWD_UI_MAX_Z : baseZ;
+}
+
 /** Min center-to-center separation (%). Mild overlap OK; stacking is not. */
 export const CROWD_MIN_SEP_X = 7;
 export const CROWD_MIN_SEP_Y = 6;

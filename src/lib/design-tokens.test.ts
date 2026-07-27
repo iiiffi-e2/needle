@@ -9,6 +9,7 @@ import {
   CROWD_UI_MAX_Z,
   crowdOverlapsUiChrome,
   crowdPosStorageKey,
+  crowdZIndexForMember,
   isValidCrowdFloorPosition,
   loadCrowdPos,
   parseCrowdPos,
@@ -31,6 +32,13 @@ function stackedPairCount(
   }
   return close;
 }
+
+describe("crowdZIndexForMember", () => {
+  it("self wins z-index over neighbors while others keep base", () => {
+    expect(crowdZIndexForMember(3, true)).toBe(CROWD_UI_MAX_Z);
+    expect(crowdZIndexForMember(3, false)).toBe(3);
+  });
+});
 
 describe("assignCrowdLayout", () => {
   it("keeps crowd z-index below the now-playing / reacts UI layer", () => {

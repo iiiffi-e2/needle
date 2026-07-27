@@ -5,9 +5,11 @@ import type { DjSlot, RoomMember, User } from "@/lib/types";
 import { VinylBlob } from "@/components/avatars/VinylBlob";
 import {
   assignCrowdLayout,
+  crowdZIndexForMember,
   resolveUserColor,
 } from "@/lib/design-tokens";
 import type { CrowdHeadReaction } from "@/lib/crowd-reactions";
+import { useLocalCrowdPosition } from "@/hooks/useLocalCrowdPosition";
 import { getInitials, truncateDisplayName } from "@/lib/utils";
 import { ProfileLink } from "@/components/shared/ProfileLink";
 
@@ -256,6 +258,7 @@ function DeckSlot({
 }
 
 export interface VenueCanvasProps {
+  roomSlug: string;
   currentDj: User | null;
   isDjSleeping?: boolean;
   sideDjs: [DjSlot | null, DjSlot | null];
@@ -277,6 +280,7 @@ export interface VenueCanvasProps {
 }
 
 export function VenueCanvas({
+  roomSlug,
   currentDj,
   isDjSleeping = false,
   sideDjs,
@@ -327,6 +331,14 @@ export function VenueCanvas({
   const crowd = useMemo(
     () => assignCrowdLayout(listeners.map((m) => m.user_id)),
     [listeners]
+  );
+
+  const selfOnFloor =
+    !!currentUserId && crowd.some((c) => c.userId === currentUserId);
+
+  const { override, isDragging, onPointerDown } = useLocalCrowdPosition(
+    roomSlug,
+    selfOnFloor
   );
 
   const reactionsByUser = useMemo(
@@ -856,23 +868,31 @@ export function VenueCanvas({
           const member = listeners.find((m) => m.user_id === c.userId);
           if (!member) return null;
           const userReactions = reactionsByUser.get(c.userId) ?? [];
-          const displayName =
-            member.user_id === currentUserId
-              ? "you"
-              : member.user?.display_name || "?";
+          const isSelf = member.user_id === currentUserId;
+          const leftPct = isSelf && override ? override.leftPct : c.leftPct;
+          const topPct = isSelf && override ? override.topPct : c.topPct;
+          const zIndex = crowdZIndexForMember(c.zIndex, isSelf);
+          const displayName = isSelf
+            ? "you"
+            : member.user?.display_name || "?";
 
           return (
             <div
               key={member.id}
               className="needle-crowd-member absolute flex flex-col items-center pointer-events-auto"
+              data-left-pct={leftPct}
+              data-top-pct={topPct}
+              onPointerDown={isSelf ? onPointerDown : undefined}
               style={{
-                left: `${c.leftPct}%`,
-                top: `${c.topPct}%`,
+                left: `${leftPct}%`,
+                top: `${topPct}%`,
                 transform: "translateX(-50%)",
-                zIndex: c.zIndex,
+                zIndex,
+                cursor: isSelf ? (isDragging ? "grabbing" : "grab") : undefined,
+                touchAction: isSelf ? "none" : undefined,
               }}
             >
-              {member.user_id === currentUserId ? (
+              {isSelf ? (
                 <>
                   <div className="relative" style={{ width: c.size }}>
                     <HeadReactionGlyphs

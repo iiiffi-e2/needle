@@ -1,6 +1,7 @@
 "use client";
 
-import { memo, useMemo, type ReactNode } from "react";
+import { memo, useMemo, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import type { DjSlot, RoomMember, User } from "@/lib/types";
 import { VinylBlob } from "@/components/avatars/VinylBlob";
 import {
@@ -300,6 +301,10 @@ export function VenueCanvas({
   deckJoinMode,
   onLeaveWaitlist,
 }: VenueCanvasProps) {
+  const router = useRouter();
+  const [focusedCrowdUserId, setFocusedCrowdUserId] = useState<string | null>(
+    null
+  );
   const requestStepOff = onRequestLeaveDeck;
   const joinLabel = deckJoinMode === "waitlist" ? "JOIN WAITLIST" : "JOIN DECK";
   const canJoinOpenSlot = canJoinDeck && deckJoinMode === "deck";
@@ -869,9 +874,10 @@ export function VenueCanvas({
           if (!member) return null;
           const userReactions = reactionsByUser.get(c.userId) ?? [];
           const isSelf = member.user_id === currentUserId;
+          const isFocused = member.user_id === focusedCrowdUserId;
           const leftPct = isSelf && override ? override.leftPct : c.leftPct;
           const topPct = isSelf && override ? override.topPct : c.topPct;
-          const zIndex = crowdZIndexForMember(c.zIndex, isSelf);
+          const zIndex = crowdZIndexForMember(c.zIndex, isSelf, isFocused);
           const displayName = isSelf
             ? "you"
             : member.user?.display_name || "?";
@@ -879,68 +885,57 @@ export function VenueCanvas({
           return (
             <div
               key={member.id}
-              className="needle-crowd-member absolute flex flex-col items-center pointer-events-auto"
+              className="needle-crowd-member absolute flex flex-col items-center pointer-events-auto select-none"
               data-left-pct={leftPct}
               data-top-pct={topPct}
               onPointerDown={isSelf ? onPointerDown : undefined}
+              onClick={
+                isSelf
+                  ? undefined
+                  : () => setFocusedCrowdUserId(member.user_id)
+              }
+              onDoubleClick={
+                isSelf
+                  ? undefined
+                  : () => router.push(`/profile/${member.user_id}`)
+              }
+              title={
+                isSelf
+                  ? undefined
+                  : `${displayName} — click to bring forward, double-click for profile`
+              }
               style={{
                 left: `${leftPct}%`,
                 top: `${topPct}%`,
                 transform: "translateX(-50%)",
                 zIndex,
-                cursor: isSelf ? (isDragging ? "grabbing" : "grab") : undefined,
+                cursor: isSelf
+                  ? isDragging
+                    ? "grabbing"
+                    : "grab"
+                  : "pointer",
                 touchAction: isSelf ? "none" : undefined,
               }}
             >
-              {isSelf ? (
-                <>
-                  <div className="relative" style={{ width: c.size }}>
-                    <HeadReactionGlyphs
-                      reactions={userReactions}
-                      size={c.size}
-                    />
-                    <CrowdMemberBlob
-                      color={resolveUserColor(
-                        c.userId,
-                        userColors.get(c.userId)
-                      )}
-                      size={c.size}
-                      dance={c.dance && !(isSelf && isDragging)}
-                      animDuration={c.animDuration}
-                    />
-                  </div>
-                  <BlobNameLabel
-                    name={displayName}
-                    maxWidth={Math.max(56, c.size + 12)}
-                  />
-                </>
-              ) : (
-                <ProfileLink
-                  userId={member.user_id}
-                  title={`${displayName} — view profile`}
-                  className="flex flex-col items-center cursor-pointer hover:opacity-90 transition-opacity"
-                >
-                  <div className="relative" style={{ width: c.size }}>
-                    <HeadReactionGlyphs
-                      reactions={userReactions}
-                      size={c.size}
-                    />
-                    <CrowdMemberBlob
-                      color={resolveUserColor(
-                        c.userId,
-                        userColors.get(c.userId)
-                      )}
-                      size={c.size}
-                      dance={c.dance}
-                      animDuration={c.animDuration}
-                    />
-                  </div>
-                  <BlobNameLabel
-                    name={displayName}
-                    maxWidth={Math.max(56, c.size + 12)}
-                  />
-                </ProfileLink>
-              )}
+              <div className="relative" style={{ width: c.size }}>
+                <HeadReactionGlyphs
+                  reactions={userReactions}
+                  size={c.size}
+                />
+                <CrowdMemberBlob
+                  color={resolveUserColor(
+                    c.userId,
+                    userColors.get(c.userId)
+                  )}
+                  size={c.size}
+                  dance={c.dance && !(isSelf && isDragging)}
+                  animDuration={c.animDuration}
+                />
+              </div>
+              <BlobNameLabel
+                name={displayName}
+                maxWidth={Math.max(56, c.size + 12)}
+              />
             </div>
           );
         })}

@@ -42,6 +42,11 @@ describe("crowdZIndexForMember", () => {
     expect(crowdZIndexForMember(3, true)).toBe(CROWD_UI_MAX_Z);
     expect(crowdZIndexForMember(3, false)).toBe(3);
   });
+
+  it("focused peers sit just under self and above the crowd", () => {
+    expect(crowdZIndexForMember(3, false, true)).toBe(CROWD_UI_MAX_Z - 1);
+    expect(crowdZIndexForMember(3, true, true)).toBe(CROWD_UI_MAX_Z);
+  });
 });
 
 describe("assignCrowdLayout", () => {

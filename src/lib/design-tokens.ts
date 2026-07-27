@@ -34,9 +34,15 @@ export const VENUE_H = 716;
  */
 export const CROWD_UI_MAX_Z = 25;
 
-/** Self avatar always paints above other crowd members, still under chrome. */
-export function crowdZIndexForMember(baseZ: number, isSelf: boolean): number {
-  return isSelf ? CROWD_UI_MAX_Z : baseZ;
+/** Self paints above focused peers; focused peers above the rest of the floor. */
+export function crowdZIndexForMember(
+  baseZ: number,
+  isSelf: boolean,
+  isFocused = false
+): number {
+  if (isSelf) return CROWD_UI_MAX_Z;
+  if (isFocused) return CROWD_UI_MAX_Z - 1;
+  return baseZ;
 }
 
 /** Min center-to-center separation (%). Mild overlap OK; stacking is not. */

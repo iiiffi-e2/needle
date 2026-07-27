@@ -142,11 +142,73 @@ async function teardownMemberships(
   botUserIds: string[]
 ): Promise<void> {
   if (!roomIds.length || !botUserIds.length) return;
-  await admin
+  const { error } = await admin
     .from("room_members")
     .delete()
     .in("room_id", roomIds)
     .in("user_id", botUserIds);
+  if (error) throw new Error(error.message);
+}
+
+function stressBotEmail(): string {
+  const frag = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+  return `stress-bot-${frag}@needle.internal`;
+}
+
+function isDuplicateAuthEmailError(message: string): boolean {
+  return /already|duplicate|exists|registered/i.test(message);
+}
+
+async function resolveUserIdByEmail(
+  admin: SupabaseClient,
+  email: string
+): Promise<string | null> {
+  const { data } = await admin
+    .from("users")
+    .select("id")
+    .eq("email", email)
+    .maybeSingle();
+  return data?.id ?? null;
+}
+
+async function tagStressBotProfile(
+  admin: SupabaseClient,
+  userId: string,
+  displayName: string,
+  color: string,
+  taken: Set<string>
+): Promise<string> {
+  let name = displayName;
+  let upErr: { message: string } | null = null;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { error } = await admin
+      .from("users")
+      .update({
+        is_stress_bot: true,
+        display_name: name,
+        avatar_color: color,
+      })
+      .eq("id", userId);
+    if (!error) return name;
+    // Unique collision with a non-bot user — pick a new name and retry.
+    if (!/unique|duplicate/i.test(error.message) || attempt === 4) {
+      upErr = error;
+      break;
+    }
+    taken.add(name);
+    name = ensureUniqueDisplayName(generateStressDisplayName(), taken);
+    taken.add(name);
+  }
+
+  // Profile fields failed — still tag as bot so the auth user is not orphaned.
+  const { error: flagErr } = await admin
+    .from("users")
+    .update({ is_stress_bot: true })
+    .eq("id", userId);
+  if (flagErr) {
+    throw new Error(upErr?.message ?? flagErr.message);
+  }
+  return name;
 }
 
 async function ensureBotPool(
@@ -168,52 +230,51 @@ async function ensureBotPool(
   );
 
   while (bots.length < needed) {
-    const n = bots.length + 1;
-    const email = `stress-bot-${n}@needle.internal`;
     let displayName = ensureUniqueDisplayName(generateStressDisplayName(), taken);
     taken.add(displayName);
     const color = CROWD_COLORS[bots.length % CROWD_COLORS.length]!;
 
-    const { data: created, error } = await admin.auth.admin.createUser({
-      email,
-      email_confirm: true,
-      password: crypto.randomUUID() + crypto.randomUUID(),
-      user_metadata: {
-        display_name: displayName,
-        stress_bot: true,
-      },
-    });
-    if (error || !created.user) {
-      throw new Error(error?.message ?? "failed to create stress bot");
-    }
-
-    // Trigger creates public.users; update flag + profile fields
-    let upErr: { message: string } | null = null;
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const { error } = await admin
-        .from("users")
-        .update({
-          is_stress_bot: true,
+    let userId: string | null = null;
+    let lastCreateError: string | null = null;
+    for (let attempt = 0; attempt < 5 && !userId; attempt++) {
+      const email = stressBotEmail();
+      const { data: created, error } = await admin.auth.admin.createUser({
+        email,
+        email_confirm: true,
+        password: crypto.randomUUID() + crypto.randomUUID(),
+        user_metadata: {
           display_name: displayName,
-          avatar_color: color,
-        })
-        .eq("id", created.user.id);
-      if (!error) {
-        upErr = null;
+          stress_bot: true,
+        },
+      });
+      if (!error && created.user) {
+        userId = created.user.id;
         break;
       }
-      // Unique collision with a non-bot user — pick a new name and retry.
-      if (!/unique|duplicate/i.test(error.message) || attempt === 4) {
-        upErr = error;
+      lastCreateError = error?.message ?? "failed to create stress bot";
+      if (!error || !isDuplicateAuthEmailError(error.message)) {
+        throw new Error(lastCreateError);
+      }
+      // Duplicate email: reuse existing public.users row if present, else retry new email.
+      const existingId = await resolveUserIdByEmail(admin, email);
+      if (existingId) {
+        userId = existingId;
         break;
       }
-      taken.add(displayName);
-      displayName = ensureUniqueDisplayName(generateStressDisplayName(), taken);
-      taken.add(displayName);
     }
-    if (upErr) throw new Error(upErr.message);
+    if (!userId) {
+      throw new Error(lastCreateError ?? "failed to create stress bot");
+    }
 
-    bots.push({ id: created.user.id, display_name: displayName });
+    displayName = await tagStressBotProfile(
+      admin,
+      userId,
+      displayName,
+      color,
+      taken
+    );
+    taken.add(displayName);
+    bots.push({ id: userId, display_name: displayName });
   }
 
   return bots.slice(0, needed).map((b) => b.id);
@@ -299,8 +360,15 @@ export async function startStressRun(
       .single();
 
     if (error || !run) {
-      await teardownMemberships(admin, roomIds, botIds);
-      return { error: error?.message ?? "failed to create run", status: 500 };
+      const base = error?.message ?? "failed to create run";
+      try {
+        await teardownMemberships(admin, roomIds, botIds);
+      } catch (teardownErr) {
+        const tMsg =
+          teardownErr instanceof Error ? teardownErr.message : "teardown failed";
+        return { error: `${base}; cleanup: ${tMsg}`, status: 500 };
+      }
+      return { error: base, status: 500 };
     }
 
     console.info(
@@ -313,8 +381,14 @@ export async function startStressRun(
     );
     return { run: mapRun(run) };
   } catch (e) {
-    await teardownMemberships(admin, roomIds, botIds);
-    const message = e instanceof Error ? e.message : "start failed";
+    let message = e instanceof Error ? e.message : "start failed";
+    try {
+      await teardownMemberships(admin, roomIds, botIds);
+    } catch (teardownErr) {
+      const tMsg =
+        teardownErr instanceof Error ? teardownErr.message : "teardown failed";
+      message = `${message}; cleanup: ${tMsg}`;
+    }
     await admin.from("stress_runs").insert({
       status: "failed",
       mode: "presence",
@@ -334,12 +408,19 @@ export async function startStressRun(
 export async function stopStressRun(
   admin: SupabaseClient,
   reason: "stopped" | "expired"
-): Promise<{ ok: true; run: StressRun | null }> {
+): Promise<
+  { ok: true; run: StressRun | null } | { ok: false; error: string }
+> {
   const active = await getActiveStressRun(admin);
   if (!active) return { ok: true, run: null };
 
   const roomIds = [active.primary_room_id, ...active.secondary_room_ids];
-  await teardownMemberships(admin, roomIds, active.bot_user_ids);
+  try {
+    await teardownMemberships(admin, roomIds, active.bot_user_ids);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "teardown failed";
+    return { ok: false, error: message };
+  }
 
   const { data } = await admin
     .from("stress_runs")
@@ -359,12 +440,16 @@ export async function stopStressRun(
 
 export async function tickStressRun(
   admin: SupabaseClient
-): Promise<{ ok: true; action: "idle" | "heartbeat" | "expired" }> {
+): Promise<
+  | { ok: true; action: "idle" | "heartbeat" | "expired" }
+  | { ok: false; error: string }
+> {
   const active = await getActiveStressRun(admin);
   if (!active) return { ok: true, action: "idle" };
 
   if (Date.now() >= Date.parse(active.expires_at)) {
-    await stopStressRun(admin, "expired");
+    const stopped = await stopStressRun(admin, "expired");
+    if (!stopped.ok) return { ok: false, error: stopped.error };
     return { ok: true, action: "expired" };
   }
 

@@ -4,6 +4,7 @@ export interface User {
   display_name: string | null;
   avatar_url: string | null;
   avatar_color: string | null;
+  is_stress_bot?: boolean;
   created_at: string;
 }
 
@@ -202,4 +203,23 @@ export interface FriendPresence {
 export interface FriendWithPresence {
   user: User;
   presence: FriendPresence;
+}
+
+export type StressRunStatus = "running" | "stopped" | "expired" | "failed";
+export type StressRunMode = "presence" | "realtime";
+
+export interface StressRun {
+  id: string;
+  status: StressRunStatus;
+  mode: StressRunMode;
+  primary_room_id: string;
+  secondary_room_ids: string[];
+  total_listeners: number;
+  per_room_counts: Record<string, number>;
+  bot_user_ids: string[];
+  started_at: string;
+  expires_at: string;
+  stopped_at: string | null;
+  error: string | null;
+  created_at: string;
 }

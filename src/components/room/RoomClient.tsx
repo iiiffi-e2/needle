@@ -495,25 +495,25 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
       <div className="needle-room-body">
         <div className="needle-venue-column">
           <div className="needle-venue-scene">
-            <YouTubeStage
-              mode={stageViewMode}
-              onModeChange={setStageViewMode}
-              track={track}
-              videoId={
-                track?.provider === "youtube" && track.provider_id
-                  ? track.provider_id
-                  : null
-              }
-              sessionId={playback?.current_queue_item_id ?? null}
-              startedAt={playback?.started_at ?? null}
-              durationSeconds={effectiveDuration || track?.duration_seconds || null}
-              isPaused={playback?.is_paused ?? false}
-              muted={isMuted}
-              onEnded={handleTrackEnded}
-              onDurationReady={handleDurationReady}
-              onAutoplayMuted={handleAutoplayMuted}
-            />
             <div className="needle-venue-canvas-slot">
+              <YouTubeStage
+                mode={stageViewMode}
+                onModeChange={setStageViewMode}
+                track={track}
+                videoId={
+                  track?.provider === "youtube" && track.provider_id
+                    ? track.provider_id
+                    : null
+                }
+                sessionId={playback?.current_queue_item_id ?? null}
+                startedAt={playback?.started_at ?? null}
+                durationSeconds={effectiveDuration || track?.duration_seconds || null}
+                isPaused={playback?.is_paused ?? false}
+                muted={isMuted}
+                onEnded={handleTrackEnded}
+                onDurationReady={handleDurationReady}
+                onAutoplayMuted={handleAutoplayMuted}
+              />
               <VenueCanvas
                 roomSlug={room.slug}
                 currentDj={dj}

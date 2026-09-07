@@ -37,7 +37,6 @@ export function YouTubeStage({
 }: YouTubeStageProps) {
   const hasPlayer = Boolean(videoId && sessionId);
   const title = track?.title ?? null;
-  const artist = track?.artist ?? null;
 
   return (
     <section
@@ -87,13 +86,6 @@ export function YouTubeStage({
           </div>
         )}
       </div>
-
-      {mode === "full" && title && (
-        <div className="youtube-stage__meta">
-          <p className="youtube-stage__title">{title}</p>
-          {artist && <p className="youtube-stage__artist">{artist}</p>}
-        </div>
-      )}
     </section>
   );
 }

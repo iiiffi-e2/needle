@@ -16,8 +16,9 @@ import { MobileBottomNav } from "@/components/venue/MobileBottomNav";
 import { DropSheet } from "@/components/venue/DropSheet";
 import { StepOffConfirmSheet } from "@/components/venue/StepOffConfirmSheet";
 import { RoomSidePanel, type TabId } from "@/components/venue/RoomSidePanel";
-import { YouTubePlayer } from "@/components/room/YouTubePlayer";
+import { YouTubeStage } from "@/components/venue/YouTubeStage";
 import { useRoomRealtime } from "@/hooks/useRoomRealtime";
+import { useStageViewMode } from "@/hooks/useStageViewMode";
 import { getEffectiveEnergy } from "@/lib/room-energy";
 import {
   HEAD_REACTION_DURATION_MS,
@@ -76,6 +77,7 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
   const headReactionCounts = useRef<Map<string, number>>(new Map());
   const [toast, setToast] = useState<string | null>(null);
   const muteStorageKey = `needle-muted-${room.slug}`;
+  const [stageViewMode, setStageViewMode] = useStageViewMode();
   const [isMuted, setIsMuted] = useState(() => {
     if (typeof window === "undefined") return false;
     try {
@@ -493,46 +495,66 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
       <div className="needle-room-body">
         <div className="needle-venue-column">
           <div className="needle-venue-scene">
-            <VenueCanvas
-              roomSlug={room.slug}
-              currentDj={dj}
-              isDjSleeping={isDjSleeping}
-              sideDjs={sideDjs}
-              members={members}
-              djUserIds={djUserIds}
-              currentUserId={currentUserId}
-              energy={energy}
-              marquee={marquee}
-              headReactions={headReactions}
-              canJoinDeck={!isUserDj && !isUserWaitlisted && !!currentUserId}
-              onJoinDeck={handleJoinDeck}
-              onLeaveDeck={handleLeaveDeck}
-              onRequestLeaveDeck={
-                isMobile && isUserDj ? () => setStepOffOpen(true) : undefined
-              }
-              deckLoading={deckLoading}
-              waitlistCount={waitlistCount}
-              waitlistPosition={waitlistPosition}
-              deckJoinMode={deckJoinMode}
-              onLeaveWaitlist={handleLeaveWaitlist}
-            />
-            <ReactionBursts bursts={bursts} />
-            <QuickReacts roomSlug={room.slug} onReact={handleQuickReact} />
-            <NowPlayingPanel
-              playback={playback}
+            <YouTubeStage
+              mode={stageViewMode}
+              onModeChange={setStageViewMode}
               track={track}
-              dj={dj}
-              votes={votes}
-              myVote={myVote}
-              userSaved={userSaved}
-              durationSeconds={effectiveDuration}
-              isMuted={isMuted}
-              canSkip={canSkip}
-              onToggleMute={handleToggleMute}
-              onVote={handleVote}
-              onSave={handleSave}
-              onSkip={handleSkip}
+              videoId={
+                track?.provider === "youtube" && track.provider_id
+                  ? track.provider_id
+                  : null
+              }
+              sessionId={playback?.current_queue_item_id ?? null}
+              startedAt={playback?.started_at ?? null}
+              durationSeconds={effectiveDuration || track?.duration_seconds || null}
+              isPaused={playback?.is_paused ?? false}
+              muted={isMuted}
+              onEnded={handleTrackEnded}
+              onDurationReady={handleDurationReady}
+              onAutoplayMuted={handleAutoplayMuted}
             />
+            <div className="needle-venue-canvas-slot">
+              <VenueCanvas
+                roomSlug={room.slug}
+                currentDj={dj}
+                isDjSleeping={isDjSleeping}
+                sideDjs={sideDjs}
+                members={members}
+                djUserIds={djUserIds}
+                currentUserId={currentUserId}
+                energy={energy}
+                marquee={marquee}
+                headReactions={headReactions}
+                canJoinDeck={!isUserDj && !isUserWaitlisted && !!currentUserId}
+                onJoinDeck={handleJoinDeck}
+                onLeaveDeck={handleLeaveDeck}
+                onRequestLeaveDeck={
+                  isMobile && isUserDj ? () => setStepOffOpen(true) : undefined
+                }
+                deckLoading={deckLoading}
+                waitlistCount={waitlistCount}
+                waitlistPosition={waitlistPosition}
+                deckJoinMode={deckJoinMode}
+                onLeaveWaitlist={handleLeaveWaitlist}
+              />
+              <ReactionBursts bursts={bursts} />
+              <QuickReacts roomSlug={room.slug} onReact={handleQuickReact} />
+              <NowPlayingPanel
+                playback={playback}
+                track={track}
+                dj={dj}
+                votes={votes}
+                myVote={myVote}
+                userSaved={userSaved}
+                durationSeconds={effectiveDuration}
+                isMuted={isMuted}
+                canSkip={canSkip}
+                onToggleMute={handleToggleMute}
+                onVote={handleVote}
+                onSave={handleSave}
+                onSkip={handleSkip}
+              />
+            </div>
           </div>
           <DropTrackBar
             roomSlug={room.slug}
@@ -625,20 +647,6 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
         >
           {toast}
         </div>
-      )}
-
-      {track?.provider === "youtube" && track.provider_id && playback?.current_queue_item_id && (
-        <YouTubePlayer
-          videoId={track.provider_id}
-          sessionId={playback.current_queue_item_id}
-          startedAt={playback.started_at}
-          durationSeconds={effectiveDuration || track.duration_seconds}
-          isPaused={playback.is_paused}
-          muted={isMuted}
-          onAutoplayMuted={handleAutoplayMuted}
-          onEnded={handleTrackEnded}
-          onDurationReady={handleDurationReady}
-        />
       )}
     </div>
   );

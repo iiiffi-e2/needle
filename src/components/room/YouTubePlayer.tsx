@@ -21,6 +21,8 @@ declare global {
         element: HTMLElement,
         config: {
           videoId: string;
+          width?: number | string;
+          height?: number | string;
           playerVars: Record<string, number | string>;
           events: {
             onReady: (event: { target: YTPlayer }) => void;
@@ -88,7 +90,7 @@ function elapsedSeconds(startedAt: string | null): number {
   return Math.max(0, (Date.now() - new Date(startedAt).getTime()) / 1000);
 }
 
-/** Hidden audio-only YouTube player — controls playback without showing video. */
+/** Visible YouTube playback host. Size comes from the Stage Screen container. */
 export function YouTubePlayer({
   videoId,
   sessionId,
@@ -199,12 +201,15 @@ export function YouTubePlayer({
 
       playerRef.current = new window.YT.Player(containerRef.current, {
         videoId,
+        width: "100%",
+        height: "100%",
         playerVars: {
           autoplay: 1,
           controls: 0,
           modestbranding: 1,
           rel: 0,
           fs: 0,
+          playsinline: 1,
         },
         events: {
           onReady: (event) => {
@@ -319,12 +324,8 @@ export function YouTubePlayer({
   }, [startedAt, durationSeconds, videoId, sessionId, notifyEnded]);
 
   return (
-    <div
-      className="fixed w-px h-px overflow-hidden opacity-0 pointer-events-none"
-      style={{ left: -9999, top: -9999 }}
-      aria-hidden
-    >
-      <div ref={containerRef} />
+    <div className="youtube-player-host">
+      <div ref={containerRef} className="youtube-player-host__mount" />
     </div>
   );
 }

@@ -391,7 +391,7 @@ export function VenueCanvas({
 
       {/* Light rig */}
       <div
-        className="absolute top-0 left-0 right-0 z-[6] pointer-events-none"
+        className="needle-light-rig absolute top-0 left-0 right-0 z-[17] pointer-events-none"
         style={{
           height: 18,
           background: "linear-gradient(180deg, #0a0a0f, #000)",
@@ -402,7 +402,7 @@ export function VenueCanvas({
       {RIG_LIGHTS.map((L, i) => (
         <div
           key={i}
-          className="absolute z-[5] pointer-events-none"
+          className="absolute z-[9] pointer-events-none"
           style={{ top: 14, left: `${L.x}%` }}
         >
           <div
@@ -417,7 +417,7 @@ export function VenueCanvas({
           />
           <div className="w-0.5 h-2 bg-[#222] mx-auto" />
           <div
-            className="mix-blend-screen transition-opacity duration-700"
+            className="needle-light-beam mix-blend-screen transition-opacity duration-700"
             style={{
               width: 120,
               height: 240,
@@ -549,7 +549,7 @@ export function VenueCanvas({
 
       {/* Left deck */}
       <div
-        className="absolute z-[11]"
+        className="needle-side-deck absolute z-[11]"
         style={{ top: "27.4%", left: "31.9%", transform: "translateX(-50%)" }}
       >
         <DeckSlot
@@ -612,7 +612,7 @@ export function VenueCanvas({
 
       {/* Center DJ */}
       <div
-        className="absolute z-[14] flex flex-col items-center pointer-events-none"
+        className="needle-center-dj absolute z-[14] flex flex-col items-center pointer-events-none"
         style={{
           top: "16.8%",
           left: "50%",
@@ -746,7 +746,7 @@ export function VenueCanvas({
 
       {/* Right deck */}
       <div
-        className="absolute z-[11]"
+        className="needle-side-deck absolute z-[11]"
         style={{ top: "27.4%", left: "68.1%", transform: "translateX(-50%)" }}
       >
         <DeckSlot
@@ -804,7 +804,7 @@ export function VenueCanvas({
 
       {/* Turntable booth */}
       <div
-        className="absolute z-[13] flex justify-center pointer-events-none"
+        className="needle-turntable absolute z-[13] flex justify-center pointer-events-none"
         style={{
           top: "36.6%",
           left: "50%",

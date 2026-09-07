@@ -46,16 +46,18 @@ export function YouTubeStage({
       )}
       aria-label="Stage screen"
     >
-      <div className="youtube-stage__chrome">
-        <div className="youtube-stage__identity">
-          <span className="youtube-stage__live" aria-hidden />
-          <span className="youtube-stage__kicker">Stage Screen</span>
-          {title && mode === "compact" && (
-            <span className="youtube-stage__chrome-title">{title}</span>
-          )}
+      {mode === "compact" && (
+        <div className="youtube-stage__chrome">
+          <div className="youtube-stage__identity">
+            <span className="youtube-stage__live" aria-hidden />
+            <span className="youtube-stage__kicker">Stage Screen</span>
+            {title && (
+              <span className="youtube-stage__chrome-title">{title}</span>
+            )}
+          </div>
+          <StageViewToggle value={mode} onChange={onModeChange} />
         </div>
-        <StageViewToggle value={mode} onChange={onModeChange} />
-      </div>
+      )}
 
       <div className="youtube-stage__screen">
         {hasPlayer ? (

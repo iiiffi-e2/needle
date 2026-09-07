@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { StageViewToggle } from "@/components/venue/StageViewToggle";
+import type { StageViewMode } from "@/lib/stage-view";
 import type { RoomPlayback, Track, User } from "@/lib/types";
 import { formatDuration } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -15,6 +17,8 @@ interface NowPlayingPanelProps {
   durationSeconds: number;
   isMuted: boolean;
   canSkip: boolean;
+  stageViewMode: StageViewMode;
+  onStageViewChange: (mode: StageViewMode) => void;
   onToggleMute: () => void;
   onVote: (dir: "awesome" | "lame") => void;
   onSave: () => void;
@@ -31,6 +35,8 @@ export function NowPlayingPanel({
   durationSeconds,
   isMuted,
   canSkip,
+  stageViewMode,
+  onStageViewChange,
   onToggleMute,
   onVote,
   onSave,
@@ -126,6 +132,9 @@ export function NowPlayingPanel({
           <p className="text-[var(--ndl-sub)] text-xs mt-1">
             DJs — drop a track to start
           </p>
+          <div className="mt-3 flex justify-center">
+            <StageViewToggle value={stageViewMode} onChange={onStageViewChange} />
+          </div>
         </div>
       ) : (
         <>
@@ -261,6 +270,10 @@ export function NowPlayingPanel({
             >
               {formatDuration(Math.floor(duration))}
             </span>
+          </div>
+
+          <div className="mt-3 flex justify-center">
+            <StageViewToggle value={stageViewMode} onChange={onStageViewChange} />
           </div>
 
           <div className="flex gap-2 mt-3">

@@ -549,6 +549,8 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
                 durationSeconds={effectiveDuration}
                 isMuted={isMuted}
                 canSkip={canSkip}
+                stageViewMode={stageViewMode}
+                onStageViewChange={setStageViewMode}
                 onToggleMute={handleToggleMute}
                 onVote={handleVote}
                 onSave={handleSave}
@@ -599,6 +601,8 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
         durationSeconds={effectiveDuration}
         isMuted={isMuted}
         canSkip={canSkip}
+        stageViewMode={stageViewMode}
+        onStageViewChange={setStageViewMode}
         onToggleMute={handleToggleMute}
         onReact={handleQuickReact}
         onVote={handleVote}

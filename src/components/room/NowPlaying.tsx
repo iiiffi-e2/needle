@@ -111,15 +111,17 @@ export function NowPlaying({
       </div>
 
       {track.provider === "youtube" && track.provider_id && playback.current_queue_item_id ? (
-        <YouTubePlayer
-          videoId={track.provider_id}
-          sessionId={playback.current_queue_item_id}
-          startedAt={playback.started_at}
-          durationSeconds={track.duration_seconds}
-          isPaused={playback.is_paused}
-          muted={false}
-          onEnded={onTrackEnded}
-        />
+        <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black">
+          <YouTubePlayer
+            videoId={track.provider_id}
+            sessionId={playback.current_queue_item_id}
+            startedAt={playback.started_at}
+            durationSeconds={track.duration_seconds}
+            isPaused={playback.is_paused}
+            muted={false}
+            onEnded={onTrackEnded}
+          />
+        </div>
       ) : (
         <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-surface-light flex items-center justify-center">
           {track.thumbnail_url ? (

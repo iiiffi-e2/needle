@@ -303,9 +303,11 @@ html[data-track-search-open] .youtube-stage--compact {
   }
 
   .youtube-stage--full {
-    top: 9.2%;
-    width: min(70%, 280px);
-    height: 10.6%;
+    top: 10%;
+    left: 6%;
+    width: 88%;
+    height: auto;
+    aspect-ratio: 16 / 9;
     border-radius: 8px;
   }
 
@@ -613,51 +615,44 @@ html[data-track-search-open] .youtube-stage--compact {
 
 .youtube-stage--full {
   position: absolute;
-  z-index: 7;
-  top: max(52px, 8.8%);
-  left: 50%;
-  width: min(54%, 520px);
-  height: 11.2%;
+  z-index: 8;
+  top: 11.5%;
+  left: 13.8%;
+  width: 72.3%;
+  height: auto;
+  aspect-ratio: 16 / 9;
   margin: 0;
-  overflow: visible;
-  border-radius: 10px;
-  transform: translateX(-50%);
+  overflow: hidden;
+  border-radius: 6px;
+  transform: none;
   pointer-events: none;
   background: #050308;
-  border: 1px solid rgba(255, 208, 137, 0.22);
+  border: 1px solid rgba(255, 208, 137, 0.16);
   box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.55),
-    0 12px 28px rgba(0, 0, 0, 0.4),
-    0 0 26px rgba(255, 157, 60, 0.16);
-}
-
-.youtube-stage--full::before {
-  content: "";
-  position: absolute;
-  inset: -28px -40px -10px;
-  z-index: -1;
-  pointer-events: none;
-  background: radial-gradient(
-    ellipse at 50% 40%,
-    rgba(255, 157, 60, 0.18),
-    transparent 70%
-  );
+    0 18px 40px rgba(0, 0, 0, 0.45),
+    0 0 40px rgba(255, 157, 60, 0.14);
 }
 
 .youtube-stage--full .youtube-stage__screen {
   height: 100%;
   aspect-ratio: auto;
   overflow: hidden;
-  border-radius: 10px;
+  border-radius: 6px;
 }
 
-.youtube-stage--full .youtube-stage__idle-glyph {
-  font-size: 16px;
-  margin-bottom: 0;
+.needle-venue-canvas-slot:has(.youtube-stage--full) .needle-stage-floor {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(12, 7, 4, 0.2) 55%,
+    rgba(12, 7, 4, 0.55) 100%
+  );
+  border-top-color: transparent;
+  box-shadow: none;
 }
 
-.youtube-stage--full .youtube-stage__idle p:last-of-type {
-  display: none;
+.needle-venue-canvas-slot:has(.youtube-stage--full) .needle-stage-lip {
+  opacity: 0;
 }
 
 .youtube-stage--compact {

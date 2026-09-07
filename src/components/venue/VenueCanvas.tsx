@@ -435,7 +435,7 @@ export function VenueCanvas({
 
       {/* Marquee */}
       <div
-        className="absolute z-[8] overflow-hidden flex items-center pointer-events-none"
+        className="needle-stage-marquee absolute z-[16] overflow-hidden flex items-center pointer-events-none"
         style={{
           top: "4.2%",
           left: "18.1%",
@@ -464,7 +464,7 @@ export function VenueCanvas({
 
       {/* Stage */}
       <div
-        className="absolute z-[7] pointer-events-none"
+        className="needle-stage-floor absolute z-[7] pointer-events-none"
         style={{
           top: "20.9%",
           left: "13.8%",
@@ -478,7 +478,7 @@ export function VenueCanvas({
         }}
       />
       <div
-        className="absolute z-[8] pointer-events-none"
+        className="needle-stage-lip absolute z-[8] pointer-events-none"
         style={{
           top: "20.7%",
           left: "13.8%",

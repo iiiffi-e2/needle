@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { FriendWithPresence } from "@/lib/types";
-import { friendsOnTheFloor, yourLiveRooms } from "./floor-return";
+import { floorPingsFrom, friendsOnTheFloor, nextFloorPings, yourLiveRooms } from "./floor-return";
 
 function friend(
   name: string,
@@ -79,5 +79,40 @@ describe("yourLiveRooms", () => {
   it("ignores spinning rooms you have never joined", () => {
     const rows = yourLiveRooms(spinning, [], now, windowMs);
     expect(rows).toEqual([]);
+  });
+});
+
+describe("nextFloorPings", () => {
+  const ada = {
+    id: "friend:ada",
+    href: "/rooms/booth",
+    label: "Ada is in Booth",
+  };
+
+  it("does not toast the first snapshot", () => {
+    expect(nextFloorPings(null, [ada])).toEqual([]);
+  });
+
+  it("toasts only ids that were not in the previous snapshot", () => {
+    expect(nextFloorPings(["friend:ada"], [ada, { ...ada, id: "room:live", label: "Live is spinning", href: "/rooms/live" }])).toEqual([
+      { id: "room:live", href: "/rooms/live", label: "Live is spinning" },
+    ]);
+  });
+});
+
+describe("floorPingsFrom", () => {
+  it("skips a room ping when a friend is already announcing that room", () => {
+    const pings = floorPingsFrom(
+      [
+        friend("Ada", {
+          roomId: "r1",
+          roomName: "Booth",
+          roomSlug: "booth",
+          canJoin: true,
+        }),
+      ],
+      [{ id: "r1", name: "Booth", slug: "booth" }]
+    );
+    expect(pings.map((p) => p.id)).toEqual(["friend:Ada"]);
   });
 });

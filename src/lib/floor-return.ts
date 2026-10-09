@@ -43,3 +43,52 @@ export function yourLiveRooms<T extends { id: string; name: string }>(
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 }
+
+export interface FloorPing {
+  id: string;
+  href: string;
+  label: string;
+}
+
+export function floorPingsFrom(
+  friends: FriendWithPresence[],
+  yourRooms: { id: string; name: string; slug: string }[]
+): FloorPing[] {
+  const friendPings: FloorPing[] = [];
+  const announcedHrefs = new Set<string>();
+
+  for (const friend of friendsOnTheFloor(friends)) {
+    const slug = friend.presence.roomSlug;
+    if (!slug) continue;
+    const href = `/rooms/${slug}`;
+    friendPings.push({
+      id: `friend:${friend.user.id}`,
+      href,
+      label: `${friend.user.display_name || "A friend"} is in ${friend.presence.roomName ?? ""}`,
+    });
+    announcedHrefs.add(href);
+  }
+
+  const roomPings: FloorPing[] = [];
+  for (const room of yourRooms) {
+    const href = `/rooms/${room.slug}`;
+    if (announcedHrefs.has(href)) continue;
+    announcedHrefs.add(href);
+    roomPings.push({
+      id: `room:${room.id}`,
+      href,
+      label: `${room.name} is spinning`,
+    });
+  }
+
+  return [...friendPings, ...roomPings];
+}
+
+export function nextFloorPings(
+  previousIds: string[] | null,
+  next: FloorPing[]
+): FloorPing[] {
+  if (previousIds === null) return [];
+  const seen = new Set(previousIds);
+  return next.filter((ping) => !seen.has(ping.id));
+}

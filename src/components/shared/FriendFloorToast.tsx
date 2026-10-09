@@ -25,18 +25,28 @@ export function FriendFloorToast() {
   useEffect(() => {
     let cancelled = false;
     let intervalId: ReturnType<typeof setInterval> | undefined;
+    let activeUserId: string | null = null;
+    let pollGeneration = 0;
     const supabase = createClient();
 
-    const tick = async () => {
+    const clearPoll = () => {
+      if (intervalId !== undefined) {
+        clearInterval(intervalId);
+        intervalId = undefined;
+      }
+    };
+
+    const tick = async (generation: number) => {
       try {
         const res = await fetch("/api/me/live");
-        if (!res.ok || cancelled) return;
+        if (!res.ok || cancelled || generation !== pollGeneration) return;
         const data = (await res.json()) as Partial<LivePayload>;
-        if (cancelled) return;
+        if (cancelled || generation !== pollGeneration) return;
         if (!Array.isArray(data.friends) || !Array.isArray(data.yourRooms)) return;
 
         const pings = floorPingsFrom(data.friends, data.yourRooms);
         const fresh = nextFloorPings(previousIds.current, pings);
+        if (cancelled || generation !== pollGeneration) return;
         previousIds.current = pings.map((item) => item.id);
         if (fresh.length > 0) setPing(fresh[0]);
       } catch {
@@ -44,23 +54,40 @@ export function FriendFloorToast() {
       }
     };
 
-    const start = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (cancelled || !user) return;
-      await tick();
-      if (cancelled) return;
+    const startPolling = (userId: string) => {
+      clearPoll();
+      activeUserId = userId;
+      previousIds.current = null;
+      const generation = ++pollGeneration;
+      void tick(generation);
       intervalId = setInterval(() => {
-        void tick();
+        void tick(generation);
       }, POLL_MS);
     };
 
-    void start();
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (cancelled) return;
+      const userId = session?.user?.id ?? null;
+      if (!userId) {
+        pollGeneration += 1;
+        clearPoll();
+        previousIds.current = null;
+        activeUserId = null;
+        setPing(null);
+        return;
+      }
+      if (userId === activeUserId) return;
+      setPing(null);
+      startPolling(userId);
+    });
 
     return () => {
       cancelled = true;
-      if (intervalId) clearInterval(intervalId);
+      pollGeneration += 1;
+      clearPoll();
+      subscription.unsubscribe();
     };
   }, []);
 

@@ -141,6 +141,13 @@ function houseRoom(options: {
     missed_turns: number;
     user?: { display_name: string };
   }[];
+  queued?: {
+    id: string;
+    dj_user_id: string;
+    track_id: string;
+    track?: { title: string };
+    is_house?: boolean;
+  };
 }) {
   let playbackReads = 0;
   const fake = fakeSupabase((call) => {
@@ -168,13 +175,24 @@ function houseRoom(options: {
       const status = call.filters.find(
         (filter) => filter.op === "eq" && filter.column === "status"
       )?.value;
-      if (status === "queued") return { data: null, error: null };
+      if (status === "queued") {
+        if (!options.queued) return { data: null, error: null };
+        const forDj = call.filters.some((filter) => filter.column === "dj_user_id");
+        return {
+          data: forDj ? options.queued : [{ dj_user_id: options.queued.dj_user_id }],
+          error: null,
+        };
+      }
       return { data: options.played ?? [], error: null };
     }
     if (call.table === "users") {
       return { data: { display_name: "Ada" }, error: null };
     }
     if (call.table === "queue_items" && call.op === "update") {
+      const id = call.filters.find((filter) => filter.column === "id")?.value;
+      if (options.queued && id === options.queued.id) {
+        return { data: options.queued, error: null };
+      }
       return { data: { id: options.playback.current_queue_item_id }, error: null };
     }
     if (call.table === "queue_items" && call.op === "insert") {
@@ -389,6 +407,32 @@ describe("advancePlayback house", () => {
       }),
     ]);
     expect(chatBodies(fake.calls)).toContain("The booth is open.");
+  });
+
+  it("does not insert a house track when a seated DJ has one queued", async () => {
+    const fake = houseRoom({
+      playback: {
+        current_track_id: null,
+        current_queue_item_id: null,
+        current_dj_user_id: SEATED_DJ.user_id,
+      },
+      played: [{ track_id: "track-9", played_at: "2026-01-01T00:00:00.000Z" }],
+      djSlots: [SEATED_DJ],
+      queued: {
+        id: "queue-next",
+        dj_user_id: SEATED_DJ.user_id,
+        track_id: "track-queued",
+        track: { title: "Queued Song" },
+      },
+    });
+
+    await advancePlayback(fake.client, ROOM_ID);
+
+    expect(
+      fake.calls
+        .filter((call) => call.table === "queue_items" && call.op === "insert")
+        .map((call) => call.payload)
+    ).not.toContainEqual(expect.objectContaining({ is_house: true }));
   });
 });
 

@@ -109,11 +109,11 @@ export async function POST(
 
     const { data: playback } = await admin
       .from("room_playback")
-      .select("current_dj_user_id")
+      .select("current_dj_user_id, current_track_id")
       .eq("room_id", room.id)
       .maybeSingle();
 
-    if (!playback?.current_dj_user_id) {
+    if (!playback?.current_dj_user_id && !playback?.current_track_id) {
       await admin.from("room_playback").upsert({
         room_id: room.id,
         current_dj_user_id: user.id,

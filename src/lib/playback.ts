@@ -162,6 +162,7 @@ export async function advancePlayback(
   }
 
   let finishedCurrentTrack = false;
+  let finishedHouse = false;
   if (playback?.current_queue_item_id) {
     const { data: finished } = await supabase
       .from("queue_items")
@@ -171,13 +172,14 @@ export async function advancePlayback(
       })
       .eq("id", playback.current_queue_item_id)
       .eq("status", "playing")
-      .select("id")
+      .select("id, is_house")
       .maybeSingle();
 
     if (!finished) {
       return { advanced: false, reason: "already_advanced" };
     }
     finishedCurrentTrack = true;
+    finishedHouse = finished.is_house === true;
   }
 
   const { data: djSlots } = await supabase
@@ -320,15 +322,17 @@ export async function advancePlayback(
         `🎵 Now playing: ${trackTitle}`
       );
 
-      await incrementUserStat(supabase, slot.user_id, "tracks_played");
-      await checkTrackPlayBadges(supabase, slot.user_id, claimed.track_id, {
-        tags: room.tags,
-        vibe: room.vibe,
-      });
+      if (!claimed.is_house) {
+        await incrementUserStat(supabase, slot.user_id, "tracks_played");
+        await checkTrackPlayBadges(supabase, slot.user_id, claimed.track_id, {
+          tags: room.tags,
+          vibe: room.vibe,
+        });
+      }
 
       played = true;
       break;
-    } else {
+    } else if (!finishedHouse) {
       await supabase
         .from("dj_slots")
         .update({ missed_turns: (slot.missed_turns || 0) + 1 })

@@ -36,7 +36,10 @@ export function FriendFloorToast() {
       }
     };
 
+    let activeGeneration = 0;
+
     const tick = async (generation: number) => {
+      if (document.visibilityState === "hidden") return;
       try {
         const res = await fetch("/api/me/live");
         if (!res.ok || cancelled || generation !== pollGeneration) return;
@@ -54,15 +57,34 @@ export function FriendFloorToast() {
       }
     };
 
+    const armInterval = (generation: number) => {
+      clearPoll();
+      intervalId = setInterval(() => {
+        void tick(generation);
+      }, POLL_MS);
+    };
+
+    const pollIfVisible = (generation: number) => {
+      if (document.visibilityState === "hidden") return;
+      void tick(generation);
+      armInterval(generation);
+    };
+
     const startPolling = (userId: string) => {
       clearPoll();
       activeUserId = userId;
       previousIds.current = null;
-      const generation = ++pollGeneration;
-      void tick(generation);
-      intervalId = setInterval(() => {
-        void tick(generation);
-      }, POLL_MS);
+      activeGeneration = ++pollGeneration;
+      pollIfVisible(activeGeneration);
+    };
+
+    const onVisibility = () => {
+      if (cancelled || !activeUserId) return;
+      if (document.visibilityState === "hidden") {
+        clearPoll();
+        return;
+      }
+      pollIfVisible(activeGeneration);
     };
 
     const {
@@ -83,10 +105,13 @@ export function FriendFloorToast() {
       startPolling(userId);
     });
 
+    document.addEventListener("visibilitychange", onVisibility);
+
     return () => {
       cancelled = true;
       pollGeneration += 1;
       clearPoll();
+      document.removeEventListener("visibilitychange", onVisibility);
       subscription.unsubscribe();
     };
   }, []);

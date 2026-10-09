@@ -122,7 +122,7 @@ export function LiveRoomsSection({ rooms }: LiveRoomsSectionProps) {
                     }}
                   >
                     <span className="text-[11px] font-bold" style={{ color: skin.glow }}>
-                      {room.tags[0] ?? "live"}
+                      {room.tags?.[0] ?? "live"}
                     </span>
                   </div>
                 </div>

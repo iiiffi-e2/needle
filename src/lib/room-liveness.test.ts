@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
+import type { Track } from "@/lib/types";
 import { partitionRooms, roomLiveness } from "./room-liveness";
 
-const track = { id: "t1" } as const;
+const track = { id: "t1" } as Track;
 
 describe("roomLiveness", () => {
   it("is spinning when a track is playing and someone is listening", () => {
@@ -33,6 +34,12 @@ describe("roomLiveness", () => {
       roomLiveness({ listener_count: 0, dj_count: 0, current_track: null })
     ).toBe("quiet");
   });
+
+  it("is open when a DJ is on deck, nobody is listening, and nothing is playing", () => {
+    expect(
+      roomLiveness({ listener_count: 0, dj_count: 1, current_track: null })
+    ).toBe("open");
+  });
 });
 
 describe("partitionRooms", () => {
@@ -48,5 +55,29 @@ describe("partitionRooms", () => {
     expect(parts.spinning.map((r) => r.name)).toEqual(["Alpha", "Zebra"]);
     expect(parts.open.map((r) => r.name)).toEqual(["Muted", "Booth"]);
     expect(parts.quiet.map((r) => r.name)).toEqual(["Empty"]);
+  });
+
+  it("sorts quiet rooms by name", () => {
+    const rooms = [
+      { name: "Zed", listener_count: 0, dj_count: 0, current_track: null },
+      { name: "Ada", listener_count: 0, dj_count: 0, current_track: null },
+      { name: "Mia", listener_count: 0, dj_count: 0, current_track: null },
+    ];
+    expect(partitionRooms(rooms).quiet.map((room) => room.name)).toEqual([
+      "Ada",
+      "Mia",
+      "Zed",
+    ]);
+  });
+
+  it("breaks a listener_count tie by name", () => {
+    const rooms = [
+      { name: "Zed", listener_count: 3, dj_count: 0, current_track: track },
+      { name: "Ada", listener_count: 3, dj_count: 0, current_track: track },
+    ];
+    expect(partitionRooms(rooms).spinning.map((room) => room.name)).toEqual([
+      "Ada",
+      "Zed",
+    ]);
   });
 });

@@ -1,18 +1,21 @@
 "use client";
 
 import { EmailCapture } from "./EmailCapture";
-import {
-  HERO_BEAMS,
-  HERO_CROWD,
-  MARQUEE,
-} from "./landing-data";
+import { HERO_BEAMS, HERO_CROWD } from "./landing-data";
 
 interface HeroVenueProps {
   liveCount: string;
   isLoggedIn?: boolean;
+  marquee: string;
+  deckLabel: string | null;
 }
 
-export function HeroVenue({ liveCount, isLoggedIn = false }: HeroVenueProps) {
+export function HeroVenue({
+  liveCount,
+  isLoggedIn = false,
+  marquee,
+  deckLabel,
+}: HeroVenueProps) {
   return (
     <section
       className="landing-hero relative w-full overflow-hidden flex flex-col"
@@ -78,8 +81,8 @@ export function HeroVenue({ liveCount, isLoggedIn = false }: HeroVenueProps) {
         </h1>
 
         <p className="landing-hero-desc text-[var(--sub)] max-w-[500px] mt-4 text-pretty">
-          Needle is a live music venue in your browser. Someone&apos;s always on deck, the crowd
-          reacts in real time, and you&apos;re already on the floor.
+          Needle is a live music venue in your browser. Take a deck, drop a song, and everyone
+          in the room hears it with you.
         </p>
 
         <div className="mt-5 z-40 w-full flex flex-col items-center">
@@ -97,8 +100,8 @@ export function HeroVenue({ liveCount, isLoggedIn = false }: HeroVenueProps) {
             className="landing-marquee-track whitespace-nowrap font-display font-bold text-[12px] tracking-[0.12em] text-[var(--glow2)] py-2 px-3"
             style={{ textShadow: "0 0 10px var(--glow)" }}
           >
-            {MARQUEE}
-            {MARQUEE}
+            {marquee}
+            {marquee}
           </div>
         </div>
 
@@ -148,9 +151,11 @@ export function HeroVenue({ liveCount, isLoggedIn = false }: HeroVenueProps) {
                 </span>
               </div>
             </div>
-            <span className="mt-1.5 px-2.5 py-[3px] rounded-[20px] bg-[linear-gradient(120deg,var(--glow),var(--accent))] text-[#1a0d06] text-[9.5px] font-extrabold tracking-[0.08em]">
-              vinyl_vera · ON DECK
-            </span>
+            {deckLabel ? (
+              <span className="mt-1.5 px-2.5 py-[3px] rounded-[20px] bg-[linear-gradient(120deg,var(--glow),var(--accent))] text-[#1a0d06] text-[9.5px] font-extrabold tracking-[0.08em]">
+                {deckLabel}
+              </span>
+            ) : null}
           </div>
 
           {HERO_CROWD.map((a, i) => (

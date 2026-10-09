@@ -101,13 +101,8 @@ const mkBlobs = (base: { b: string; l: string; s: string; c: number }[]) =>
     d: `${(1.8 + i * 0.3).toFixed(1)}s`,
   }));
 
-export const LANDING_ROOMS = [
+export const ROOM_SKINS = [
   {
-    slug: "the-first-room-ever",
-    name: "The FIRST Room Ever",
-    track: "Midnight Pretenders — Tomoko Aran",
-    count: "9",
-    tag: "city pop",
     bg: "radial-gradient(120% 90% at 50% 0%, #2a1709, #100a06)",
     glow: "#ff9d3c",
     stage: "#ff9d3c33",
@@ -119,11 +114,6 @@ export const LANDING_ROOMS = [
     ]),
   },
   {
-    slug: "3am-yacht-rock",
-    name: "3AM Yacht Rock",
-    track: "Sailing — Christopher Cross",
-    count: "14",
-    tag: "smooth",
     bg: "radial-gradient(120% 90% at 50% 0%, #0c1c2a, #0a0f16)",
     glow: "#56b9ff",
     stage: "#56b9ff33",
@@ -135,11 +125,6 @@ export const LANDING_ROOMS = [
     ]),
   },
   {
-    slug: "goblin-mode-fm",
-    name: "Goblin Mode FM",
-    track: "Lid — Aphex Twin",
-    count: "22",
-    tag: "unhinged",
     bg: "radial-gradient(120% 90% at 50% 0%, #1c0c2a, #120a18)",
     glow: "#a98bff",
     stage: "#a98bff33",
@@ -151,11 +136,6 @@ export const LANDING_ROOMS = [
     ]),
   },
   {
-    slug: "velvet-basement",
-    name: "Velvet Basement",
-    track: "Feel Like Makin' Love — D'Angelo",
-    count: "31",
-    tag: "after hours",
     bg: "radial-gradient(120% 90% at 50% 0%, #2a0c1a, #160a10)",
     glow: "#ff6fae",
     stage: "#ff6fae33",
@@ -194,33 +174,3 @@ export const FEATURES = [
     body: "Every room is its own little club with its own crowd, regulars, and weird in-jokes. Show up as a vinyl blob and find your people.",
   },
 ] as const;
-
-export const STATS = [
-  { n: "140+", label: "rooms spinning" },
-  { n: "2.3M", label: "tracks dropped" },
-  { n: "47k", label: "blobs on the floor" },
-] as const;
-
-export const QUOTES = [
-  {
-    text: "I came for one song and lost three hours. The crowd reacting in real time is unreasonably fun.",
-    name: "mossy",
-    handle: "@mossymoss",
-    color: "#5ad1c8",
-  },
-  {
-    text: "It's the only place online that feels like actually being somewhere. My basement room has regulars now.",
-    name: "pluto",
-    handle: "@plutocrat",
-    color: "#8a7bff",
-  },
-  {
-    text: "Took the deck on a whim, played the worst song ever, got 12 Lames, never felt more alive.",
-    name: "404_disco",
-    handle: "@disco404",
-    color: "#7ed957",
-  },
-] as const;
-
-export const MARQUEE =
-  "NOW SPINNING · Midnight Pretenders — Tomoko Aran · played by vinyl_vera · ";

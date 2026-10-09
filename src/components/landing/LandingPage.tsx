@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import type { RoomWithStats } from "@/lib/types";
+import { formatListenerCount, heroDeckLabel, landingMarquee } from "@/lib/landing-honesty";
+import { partitionRooms } from "@/lib/room-liveness";
 import { LandingNav } from "./LandingNav";
 import { HeroVenue } from "./HeroVenue";
 import { HeroStatement } from "./HeroStatement";
@@ -18,12 +20,8 @@ interface LandingPageProps {
   hero?: "venue" | "statement";
 }
 
-function formatLiveCount(totalListeners: number): string {
-  if (totalListeners >= 1000) {
-    return totalListeners.toLocaleString();
-  }
-  if (totalListeners > 0) return String(totalListeners);
-  return "1,204";
+function listenerSum(rooms: RoomWithStats[]): number {
+  return rooms.reduce((sum, room) => sum + (room.listener_count ?? 0), 0);
 }
 
 export function LandingPage({
@@ -33,7 +31,7 @@ export function LandingPage({
   hero = "venue",
 }: LandingPageProps) {
   const [rooms, setRooms] = useState<RoomWithStats[]>([]);
-  const [liveCount, setLiveCount] = useState("1,204");
+  const [liveCount, setLiveCount] = useState("0");
 
   useEffect(() => {
     fetch("/api/rooms")
@@ -41,16 +39,14 @@ export function LandingPage({
       .then((data: RoomWithStats[]) => {
         if (!Array.isArray(data)) return;
         setRooms(data);
-        const listeners = data.reduce(
-          (sum, room) => sum + (room.listener_count ?? 0),
-          0
-        );
-        if (listeners > 0) {
-          setLiveCount(formatLiveCount(listeners));
-        }
+        setLiveCount(formatListenerCount(listenerSum(data)));
       })
       .catch(() => {});
   }, []);
+
+  const listenerTotal = listenerSum(rooms);
+  const spinning = partitionRooms(rooms).spinning;
+  const headline = spinning[0] ?? null;
 
   return (
     <div className="landing-page ndl-scroll min-h-screen w-full overflow-x-hidden">
@@ -63,11 +59,19 @@ export function LandingPage({
         {hero === "statement" ? (
           <HeroStatement liveCount={liveCount} isLoggedIn={isLoggedIn} />
         ) : (
-          <HeroVenue liveCount={liveCount} isLoggedIn={isLoggedIn} />
+          <HeroVenue
+            liveCount={liveCount}
+            isLoggedIn={isLoggedIn}
+            marquee={landingMarquee(headline)}
+            deckLabel={heroDeckLabel(headline)}
+          />
         )}
         <LiveRoomsSection rooms={rooms} />
         <FeaturesSection />
-        <SocialProofSection />
+        <SocialProofSection
+          spinningCount={spinning.length}
+          listenerTotal={listenerTotal}
+        />
         <FooterCta isLoggedIn={isLoggedIn} />
       </div>
     </div>

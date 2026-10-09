@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { RoomCard } from "./RoomCard";
 import type { RoomWithStats } from "@/lib/types";
+import { partitionRooms } from "@/lib/room-liveness";
 import Link from "next/link";
 
 export function RoomDirectory() {
@@ -75,11 +76,30 @@ export function RoomDirectory() {
     );
   }
 
+  const { spinning, open, quiet } = partitionRooms(rooms);
+  const sections = [
+    { heading: "Spinning right now", rooms: spinning },
+    { heading: "Booth is open", rooms: open },
+    { heading: "Quiet rooms", rooms: quiet },
+  ];
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {rooms.map((room) => (
-        <RoomCard key={room.id} room={room} />
-      ))}
+    <div className="space-y-10">
+      {sections.map(
+        (section) =>
+          section.rooms.length > 0 && (
+            <div key={section.heading}>
+              <h2 className="font-display text-xl font-extrabold mb-4">
+                {section.heading}
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {section.rooms.map((room) => (
+                  <RoomCard key={room.id} room={room} />
+                ))}
+              </div>
+            </div>
+          ),
+      )}
     </div>
   );
 }

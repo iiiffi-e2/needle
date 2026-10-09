@@ -31,6 +31,7 @@ npm install
    - `005_friendships.sql`
    - `006_stress_test.sql` (stress harness)
    - `007_stress_bot_write_guard.sql` (stress harness)
+   - `008_house_queue.sql`
 5. Enable Realtime for: `chat_messages`, `room_members`, `room_playback`, `track_votes`, `dj_slots`, `dj_waitlist`, `queue_items`, `relationships`, `room_invites`
 
 ### 3. YouTube Data API (track search)

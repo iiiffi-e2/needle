@@ -1,12 +1,28 @@
 import Link from "next/link";
 import type { RoomWithStats } from "@/lib/types";
+import { roomLiveness } from "@/lib/room-liveness";
 import { formatDuration } from "@/lib/utils";
 
 interface RoomCardProps {
   room: RoomWithStats;
 }
 
+const badgeClasses = {
+  spinning:
+    "border-[color-mix(in_srgb,#36e07f_40%,transparent)] bg-[color-mix(in_srgb,#36e07f_15%,transparent)] text-[#36e07f]",
+  open: "border-[color-mix(in_srgb,var(--ndl-glow)_40%,transparent)] bg-[color-mix(in_srgb,var(--ndl-glow)_15%,transparent)] text-glow-soft",
+  quiet: "border-[var(--ndl-line)] bg-[#ffffff08] text-muted",
+} as const;
+
+const badgeLabels = {
+  spinning: "LIVE",
+  open: "OPEN",
+  quiet: "QUIET",
+} as const;
+
 export function RoomCard({ room }: RoomCardProps) {
+  const liveness = roomLiveness(room);
+
   return (
     <Link
       href={`/rooms/${room.slug}`}
@@ -19,8 +35,10 @@ export function RoomCard({ room }: RoomCardProps) {
         <h3 className="font-display text-lg font-extrabold group-hover:text-glow-soft transition-colors">
           {room.name}
         </h3>
-        <span className="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full border border-[color-mix(in_srgb,#36e07f_40%,transparent)] bg-[color-mix(in_srgb,#36e07f_15%,transparent)] text-[#36e07f]">
-          LIVE
+        <span
+          className={`text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full border ${badgeClasses[liveness]}`}
+        >
+          {badgeLabels[liveness]}
         </span>
       </div>
 

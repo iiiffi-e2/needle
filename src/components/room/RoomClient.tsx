@@ -471,7 +471,7 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
   }, [isMobile]);
 
   const marquee = track
-    ? `NOW SPINNING · ${track.title}${track.artist ? ` — ${track.artist}` : ""} · played by ${dj?.display_name || "DJ"} · `
+    ? `NOW SPINNING · ${track.title}${track.artist ? ` — ${track.artist}` : ""} · played by ${!dj ? "House" : dj.display_name || "DJ"} · `
     : isDjSleeping
       ? `${dj?.display_name || "DJ"} is resting — drop a track to wake the booth · `
       : `${room.name} · The booth is open · Drop a track to get moving · `;
@@ -518,6 +518,7 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
                 roomSlug={room.slug}
                 currentDj={dj}
                 isDjSleeping={isDjSleeping}
+                houseSpinning={Boolean(track && !dj)}
                 sideDjs={sideDjs}
                 members={members}
                 djUserIds={djUserIds}

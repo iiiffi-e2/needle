@@ -72,7 +72,7 @@ export async function GET() {
 
       const { data: playback } = await admin
         .from("room_playback")
-        .select("*, track:tracks(*)")
+        .select("*, track:tracks(*), dj:users!room_playback_current_dj_user_id_fkey(display_name)")
         .eq("room_id", room.id)
         .maybeSingle();
 
@@ -81,6 +81,7 @@ export async function GET() {
         listener_count: listenerCount || 0,
         dj_count: djCount || 0,
         current_track: playback?.track || null,
+        current_dj: playback?.dj ?? null,
       };
     })
   );

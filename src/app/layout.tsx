@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Hanken_Grotesk } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { AuthWatcher } from "@/components/shared/AuthWatcher";
+import { FriendFloorToast } from "@/components/shared/FriendFloorToast";
 import { InviteToast } from "@/components/shared/InviteToast";
 import { InstallPromptGate } from "@/components/shared/InstallPromptGate";
 import { ServiceWorkerRegister } from "@/components/shared/ServiceWorkerRegister";
@@ -55,6 +56,7 @@ export default function RootLayout({
       <body className="min-h-full antialiased">
         {children}
         <InviteToast />
+        <FriendFloorToast />
         <AuthWatcher />
         <InstallPromptGate />
         <ServiceWorkerRegister />

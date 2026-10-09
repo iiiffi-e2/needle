@@ -210,23 +210,21 @@ export function NowPlayingPanel({
                   {track.artist}
                 </div>
               )}
-              {dj && (
-                <div className="flex items-center gap-1.5 mt-1">
-                  <span
-                    className="w-4 h-4 rounded-full shrink-0"
-                    style={{
-                      background:
-                        "linear-gradient(140deg, var(--ndl-accent), var(--ndl-glow))",
-                    }}
-                  />
-                  <span className="text-[11px]" style={{ color: "var(--ndl-sub)" }}>
-                    played by{" "}
-                    <b className="font-bold" style={{ color: "var(--ndl-txt)" }}>
-                      {dj.display_name}
-                    </b>
-                  </span>
-                </div>
-              )}
+              <div className="flex items-center gap-1.5 mt-1">
+                <span
+                  className="w-4 h-4 rounded-full shrink-0"
+                  style={{
+                    background:
+                      "linear-gradient(140deg, var(--ndl-accent), var(--ndl-glow))",
+                  }}
+                />
+                <span className="text-[11px]" style={{ color: "var(--ndl-sub)" }}>
+                  played by{" "}
+                  <b className="font-bold" style={{ color: "var(--ndl-txt)" }}>
+                    {dj ? dj.display_name : "House"}
+                  </b>
+                </span>
+              </div>
             </div>
           </div>
 

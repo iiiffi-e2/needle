@@ -72,7 +72,7 @@ export async function GET() {
 
       const { data: playback } = await admin
         .from("room_playback")
-        .select("*, track:tracks(*), dj:users!room_playback_current_dj_user_id_fkey(*)")
+        .select("*, track:tracks(*), dj:users!room_playback_current_dj_user_id_fkey(display_name)")
         .eq("room_id", room.id)
         .maybeSingle();
 

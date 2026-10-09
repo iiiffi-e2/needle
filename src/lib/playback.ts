@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { checkTrackPlayBadges } from "@/lib/badges";
 import { processInactiveDjs, processInactiveMembers, presenceCutoff } from "@/lib/dj-booth";
+import { pickHouseTrack } from "@/lib/house-crate";
 import { incrementUserStat } from "@/lib/user-stats";
 
 export async function postSystemMessage(
@@ -56,6 +57,88 @@ export async function advancePlayback(
     .eq("room_id", roomId)
     .single();
 
+  async function startHouseOrSilence(
+    silentDjUserId: string | null
+  ): Promise<boolean> {
+    const { data: playedRows } = await supabase
+      .from("queue_items")
+      .select("track_id, played_at")
+      .eq("room_id", roomId)
+      .eq("status", "played")
+      .not("played_at", "is", null);
+
+    const history = (playedRows ?? []).flatMap((row) => {
+      if (row.played_at == null || row.track_id == null) return [];
+      return [
+        {
+          trackId: row.track_id as string,
+          playedAt: row.played_at as string,
+        },
+      ];
+    });
+
+    const trackId = pickHouseTrack(
+      history,
+      playback?.current_track_id ?? null
+    );
+    const now = new Date().toISOString();
+
+    if (!trackId) {
+      await supabase.from("room_playback").upsert({
+        room_id: roomId,
+        current_track_id: null,
+        current_queue_item_id: null,
+        current_dj_user_id: silentDjUserId,
+        started_at: null,
+        is_paused: false,
+        updated_at: now,
+      });
+
+      if (playback?.current_track_id) {
+        await postSystemMessage(supabase, roomId, "The booth is open.");
+      }
+
+      return false;
+    }
+
+    const { data: inserted } = await supabase
+      .from("queue_items")
+      .insert({
+        room_id: roomId,
+        dj_user_id: null,
+        track_id: trackId,
+        position: 0,
+        status: "playing",
+        is_house: true,
+      })
+      .select("id")
+      .single();
+
+    await supabase.from("room_playback").upsert({
+      room_id: roomId,
+      current_track_id: trackId,
+      current_queue_item_id: inserted.id,
+      current_dj_user_id: null,
+      started_at: now,
+      is_paused: false,
+      updated_at: now,
+    });
+
+    const { data: houseTrack } = await supabase
+      .from("tracks")
+      .select("title")
+      .eq("id", trackId)
+      .maybeSingle();
+
+    await postSystemMessage(
+      supabase,
+      roomId,
+      `The house is spinning: ${houseTrack?.title || "a track"}`
+    );
+
+    return true;
+  }
+
   let finishedCurrentTrack = false;
   if (playback?.current_queue_item_id) {
     const { data: finished } = await supabase
@@ -82,15 +165,10 @@ export async function advancePlayback(
     .order("position");
 
   if (!djSlots || djSlots.length === 0) {
-    await supabase.from("room_playback").upsert({
-      room_id: roomId,
-      current_track_id: null,
-      current_queue_item_id: null,
-      current_dj_user_id: null,
-      started_at: null,
-      is_paused: false,
-      updated_at: new Date().toISOString(),
-    });
+    const started = await startHouseOrSilence(null);
+    if (started) {
+      return { advanced: true, reason };
+    }
     return { advanced: false, reason: "no_djs" };
   }
 
@@ -254,18 +332,14 @@ export async function advancePlayback(
         ? currentDjId
         : slots[startIndex]?.user_id ?? slots[0]?.user_id ?? null;
 
-    await supabase.from("room_playback").upsert({
-      room_id: roomId,
-      current_track_id: null,
-      current_queue_item_id: null,
-      current_dj_user_id: sleepingDjId,
-      started_at: null,
-      is_paused: false,
-      updated_at: new Date().toISOString(),
-    });
+    const started = await startHouseOrSilence(sleepingDjId);
 
     await processInactiveDjs(supabase, roomId);
     await processInactiveMembers(supabase, roomId);
+
+    if (started) {
+      return { advanced: true, reason };
+    }
   }
 
   if (played) {

@@ -262,6 +262,7 @@ export interface VenueCanvasProps {
   roomSlug: string;
   currentDj: User | null;
   isDjSleeping?: boolean;
+  houseSpinning?: boolean;
   sideDjs: [DjSlot | null, DjSlot | null];
   members: RoomMember[];
   djUserIds: Set<string>;
@@ -284,6 +285,7 @@ export function VenueCanvas({
   roomSlug,
   currentDj,
   isDjSleeping = false,
+  houseSpinning = false,
   sideDjs,
   members,
   djUserIds,
@@ -737,6 +739,16 @@ export function VenueCanvas({
               )}
             </div>
           </>
+        ) : houseSpinning ? (
+          <div className="text-sm italic mt-8" style={{ color: "var(--sub)" }}>
+            <div>House</div>
+            <div
+              className="not-italic font-extrabold tracking-[0.08em]"
+              style={{ fontSize: 9.5 }}
+            >
+              SPINNING
+            </div>
+          </div>
         ) : (
           <div className="text-sm italic mt-8" style={{ color: "var(--sub)" }}>
             Booth open

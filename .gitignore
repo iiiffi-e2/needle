@@ -43,3 +43,6 @@ next-env.d.ts
 
 # Superpowers SDD scratch
 .superpowers/
+
+# local git worktrees
+.worktrees/

@@ -72,7 +72,8 @@ export interface Track {
 export interface QueueItem {
   id: string;
   room_id: string;
-  dj_user_id: string;
+  dj_user_id: string | null;
+  is_house?: boolean;
   track_id: string;
   position: number;
   status: "queued" | "playing" | "played" | "skipped";

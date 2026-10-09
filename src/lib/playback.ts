@@ -81,9 +81,8 @@ export async function advancePlayback(
       history,
       playback?.current_track_id ?? null
     );
-    const now = new Date().toISOString();
 
-    if (!trackId) {
+    async function clearToSilence() {
       await supabase.from("room_playback").upsert({
         room_id: roomId,
         current_track_id: null,
@@ -91,17 +90,33 @@ export async function advancePlayback(
         current_dj_user_id: silentDjUserId,
         started_at: null,
         is_paused: false,
-        updated_at: now,
+        updated_at: new Date().toISOString(),
       });
 
       if (playback?.current_track_id) {
         await postSystemMessage(supabase, roomId, "The booth is open.");
       }
+    }
 
+    if (!trackId) {
+      await clearToSilence();
       return false;
     }
 
-    const { data: inserted } = await supabase
+    const { data: livePlayback } = await supabase
+      .from("room_playback")
+      .select("current_queue_item_id")
+      .eq("room_id", roomId)
+      .maybeSingle();
+
+    if (
+      (livePlayback?.current_queue_item_id ?? null) !==
+      (playback?.current_queue_item_id ?? null)
+    ) {
+      return false;
+    }
+
+    const { data: inserted, error: insertError } = await supabase
       .from("queue_items")
       .insert({
         room_id: roomId,
@@ -113,6 +128,13 @@ export async function advancePlayback(
       })
       .select("id")
       .single();
+
+    if (insertError || !inserted?.id) {
+      await clearToSilence();
+      return false;
+    }
+
+    const now = new Date().toISOString();
 
     await supabase.from("room_playback").upsert({
       room_id: roomId,

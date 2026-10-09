@@ -1,6 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { checkTrackPlayBadges } from "@/lib/badges";
 import { advancePlayback, shouldRotateToNextDj } from "./playback";
+
+vi.mock("@/lib/badges", () => ({
+  checkTrackPlayBadges: vi.fn(),
+  awardStatBadges: vi.fn(),
+}));
 
 describe("shouldRotateToNextDj", () => {
   it("does not rotate when there is only one DJ", () => {
@@ -36,10 +42,19 @@ describe("shouldRotateToNextDj", () => {
 
 const ROOM_ID = "room-1";
 
+const FIXTURE_TRACK_TITLE = "Night Drive";
+
+interface FakeFilter {
+  op: "eq" | "gte" | "lt";
+  column: string;
+  value: unknown;
+}
+
 interface FakeCall {
   table: string;
   op: "select" | "insert" | "update" | "upsert";
   payload?: unknown;
+  filters: FakeFilter[];
 }
 
 interface FakeReply {
@@ -53,9 +68,10 @@ function fakeSupabase(reply: (call: FakeCall) => FakeReply) {
   function from(table: string) {
     let op: FakeCall["op"] = "select";
     let payload: unknown;
+    const filters: FakeFilter[] = [];
 
     const execute = () => {
-      const call: FakeCall = { table, op, payload };
+      const call: FakeCall = { table, op, payload, filters: [...filters] };
       calls.push(call);
       return reply(call);
     };
@@ -77,7 +93,18 @@ function fakeSupabase(reply: (call: FakeCall) => FakeReply) {
         payload = value;
         return chain;
       },
-      eq: () => chain,
+      eq: (column: string, value: unknown) => {
+        filters.push({ op: "eq", column, value });
+        return chain;
+      },
+      gte: (column: string, value: unknown) => {
+        filters.push({ op: "gte", column, value });
+        return chain;
+      },
+      lt: (column: string, value: unknown) => {
+        filters.push({ op: "lt", column, value });
+        return chain;
+      },
       not: () => chain,
       order: () => chain,
       limit: () => chain,
@@ -102,10 +129,18 @@ function houseRoom(options: {
   playback: {
     current_track_id: string | null;
     current_queue_item_id: string | null;
+    current_dj_user_id?: string | null;
   };
   played?: { track_id: string; played_at: string }[];
   insert?: FakeReply;
   liveQueueItemId?: string | null;
+  djSlots?: {
+    id: string;
+    user_id: string;
+    position: number;
+    missed_turns: number;
+    user?: { display_name: string };
+  }[];
 }) {
   let playbackReads = 0;
   const fake = fakeSupabase((call) => {
@@ -122,9 +157,22 @@ function houseRoom(options: {
       }
       return { data: options.playback, error: null };
     }
-    if (call.table === "dj_slots") return { data: [], error: null };
+    if (call.table === "dj_slots" && call.op === "select") {
+      const inactiveOnly = call.filters.some(
+        (filter) => filter.op === "gte" && filter.column === "missed_turns"
+      );
+      if (inactiveOnly) return { data: [], error: null };
+      return { data: options.djSlots ?? [], error: null };
+    }
     if (call.table === "queue_items" && call.op === "select") {
+      const status = call.filters.find(
+        (filter) => filter.op === "eq" && filter.column === "status"
+      )?.value;
+      if (status === "queued") return { data: null, error: null };
       return { data: options.played ?? [], error: null };
+    }
+    if (call.table === "users") {
+      return { data: { display_name: "Ada" }, error: null };
     }
     if (call.table === "queue_items" && call.op === "update") {
       return { data: { id: options.playback.current_queue_item_id }, error: null };
@@ -133,7 +181,7 @@ function houseRoom(options: {
       return options.insert ?? { data: { id: "house-1" }, error: null };
     }
     if (call.table === "tracks") {
-      return { data: { title: "Night Drive" }, error: null };
+      return { data: { title: FIXTURE_TRACK_TITLE }, error: null };
     }
     return { data: null, error: null };
   });
@@ -141,7 +189,19 @@ function houseRoom(options: {
   return fake;
 }
 
+const SEATED_DJ = {
+  id: "slot-1",
+  user_id: "dj-a",
+  position: 0,
+  missed_turns: 0,
+  user: { display_name: "Ada" },
+};
+
 describe("advancePlayback house", () => {
+  beforeEach(() => {
+    vi.mocked(checkTrackPlayBadges).mockClear();
+  });
+
   it("clears playback and posts that the booth is open only when a track had been current", async () => {
     const quiet = houseRoom({
       playback: { current_track_id: null, current_queue_item_id: null },
@@ -253,7 +313,90 @@ describe("advancePlayback house", () => {
     expect(fake.calls.filter((call) => call.op === "insert")).toEqual([]);
     expect(fake.calls.filter((call) => call.op === "upsert")).toEqual([]);
   });
+
+  it("spins house when a seated DJ has no queued track", async () => {
+    const fake = houseRoom({
+      playback: {
+        current_track_id: null,
+        current_queue_item_id: null,
+        current_dj_user_id: SEATED_DJ.user_id,
+      },
+      played: [{ track_id: "track-9", played_at: "2026-01-01T00:00:00.000Z" }],
+      djSlots: [SEATED_DJ],
+    });
+
+    await expect(advancePlayback(fake.client, ROOM_ID)).resolves.toMatchObject({
+      advanced: true,
+    });
+
+    expect(
+      fake.calls
+        .filter((call) => call.table === "queue_items" && call.op === "insert")
+        .map((call) => call.payload)
+    ).toEqual([
+      {
+        room_id: ROOM_ID,
+        dj_user_id: null,
+        track_id: "track-9",
+        position: 0,
+        status: "playing",
+        is_house: true,
+      },
+    ]);
+    expect(
+      fake.calls
+        .filter((call) => call.table === "room_playback" && call.op === "upsert")
+        .map((call) => call.payload)
+    ).toEqual([
+      expect.objectContaining({
+        current_track_id: "track-9",
+        current_queue_item_id: "house-1",
+        current_dj_user_id: null,
+      }),
+    ]);
+    expect(chatBodies(fake.calls)).toContain(
+      `The house is spinning: ${FIXTURE_TRACK_TITLE}`
+    );
+    expect(checkTrackPlayBadges).not.toHaveBeenCalled();
+    expect(fake.calls.filter((call) => call.table === "user_stats")).toEqual([]);
+  });
+
+  it("clears playback when a seated DJ has no queue and no played history", async () => {
+    const fake = houseRoom({
+      playback: {
+        current_track_id: "track-current",
+        current_queue_item_id: "queue-current",
+        current_dj_user_id: SEATED_DJ.user_id,
+      },
+      djSlots: [SEATED_DJ],
+    });
+
+    await expect(advancePlayback(fake.client, ROOM_ID)).resolves.toMatchObject({
+      advanced: false,
+    });
+
+    expect(
+      fake.calls
+        .filter((call) => call.table === "room_playback" && call.op === "upsert")
+        .map((call) => call.payload)
+    ).toEqual([
+      expect.objectContaining({
+        room_id: ROOM_ID,
+        current_track_id: null,
+        current_queue_item_id: null,
+        started_at: null,
+        is_paused: false,
+      }),
+    ]);
+    expect(chatBodies(fake.calls)).toContain("The booth is open.");
+  });
 });
+
+function chatBodies(calls: FakeCall[]) {
+  return calls
+    .filter((call) => call.table === "chat_messages" && call.op === "insert")
+    .map((call) => (call.payload as { body?: string }).body);
+}
 
 function boothOpenMessages(calls: FakeCall[]) {
   return calls

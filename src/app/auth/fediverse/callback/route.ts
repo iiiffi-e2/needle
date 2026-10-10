@@ -15,6 +15,7 @@ import {
 } from "@/lib/auth/fediverse-callback";
 import { assertPublicHost } from "@/lib/auth/fediverse-host";
 import { establishFediverseSession } from "@/lib/auth/fediverse-session";
+import { sessionLandingResponse } from "@/lib/auth/session-landing";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -120,6 +121,7 @@ export async function GET(request: Request) {
     exchangeFailed,
   });
 
+  let minted = false;
   if (plan.mint && account && cookie) {
     await establishFediverseSession(
       {
@@ -166,7 +168,11 @@ export async function GET(request: Request) {
         },
       }
     );
+    minted = true;
   }
 
-  return clearState(NextResponse.redirect(plan.location));
+  const response = minted
+    ? sessionLandingResponse(plan.location)
+    : NextResponse.redirect(plan.location);
+  return clearState(response);
 }

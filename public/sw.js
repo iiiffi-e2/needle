@@ -1,4 +1,4 @@
-const CACHE_NAME = "needle-v3";
+const CACHE_NAME = "needle-v4";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());
@@ -16,6 +16,9 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  // Page loads stay with the browser. Following the sign-in redirect from
+  // here stores the session cookie after the next page has already rendered.
+  if (event.request.mode === "navigate") return;
 
   event.respondWith(
     fetch(event.request).catch(() => caches.match(event.request)),

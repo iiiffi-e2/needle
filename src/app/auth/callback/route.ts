@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { callbackErrorCode } from "@/lib/auth/auth-errors";
 import { loginErrorLocation } from "@/lib/auth/fediverse-callback";
 import { safeRedirectPath } from "@/lib/auth/safe-redirect";
+import { sessionLandingResponse } from "@/lib/auth/session-landing";
 
 function readCookie(header: string | null, name: string): string | null {
   if (!header) return null;
@@ -32,15 +33,17 @@ export async function GET(request: Request) {
     exchangeOk = !error;
   }
 
-  const location =
-    code && exchangeOk
-      ? `${origin}${safeRedirectPath(next)}`
-      : loginErrorLocation(
-          origin,
-          callbackErrorCode({ provider, hasCode: Boolean(code) })
-        );
+  const signedIn = Boolean(code && exchangeOk);
+  const location = signedIn
+    ? `${origin}${safeRedirectPath(next)}`
+    : loginErrorLocation(
+        origin,
+        callbackErrorCode({ provider, hasCode: Boolean(code) })
+      );
 
-  const response = NextResponse.redirect(location);
+  const response = signedIn
+    ? sessionLandingResponse(location)
+    : NextResponse.redirect(location);
   response.cookies.set("needle_auth_provider", "", { path: "/", maxAge: 0 });
   return response;
 }

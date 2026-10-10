@@ -140,15 +140,6 @@ export function ContinueForm({ heading, lede, alternate }: ContinueFormProps) {
             >
               {loading === "google" ? "Continuing..." : "Continue with Google"}
             </button>
-            <button
-              type="button"
-              onClick={() => startOAuth("apple")}
-              disabled={loading !== null}
-              className="w-full btn-primary py-2.5 rounded-full font-bold disabled:opacity-50"
-            >
-              {loading === "apple" ? "Continuing..." : "Continue with Apple"}
-            </button>
-
             {fediOpen ? (
               <form onSubmit={startFediverse} className="space-y-3">
                 <input
@@ -156,6 +147,7 @@ export function ContinueForm({ heading, lede, alternate }: ContinueFormProps) {
                   value={handle}
                   onChange={(event) => setHandle(event.target.value)}
                   placeholder="name@server"
+                  aria-label="Fediverse handle"
                   autoComplete="username"
                   className="w-full input-venue rounded-xl px-4 py-2.5 text-sm"
                   required
@@ -163,17 +155,30 @@ export function ContinueForm({ heading, lede, alternate }: ContinueFormProps) {
                 <button
                   type="submit"
                   disabled={loading !== null}
-                  className="w-full py-2.5 rounded-full font-bold border border-white/15 disabled:opacity-50"
+                  className="w-full btn-primary py-2.5 rounded-full font-bold disabled:opacity-50"
                 >
-                  {loading === "fedi" ? "Continuing..." : "Continue with the Fediverse"}
+                  {loading === "fedi" ? "Continuing..." : "Continue"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFediOpen(false);
+                    setError("");
+                  }}
+                  className="w-full text-sm text-muted hover:text-foreground"
+                >
+                  Back
                 </button>
               </form>
             ) : (
               <button
                 type="button"
-                onClick={() => setFediOpen(true)}
+                onClick={() => {
+                  setFediOpen(true);
+                  setError("");
+                }}
                 disabled={loading !== null}
-                className="w-full py-2.5 rounded-full font-bold border border-white/15 disabled:opacity-50"
+                className="w-full btn-primary py-2.5 rounded-full font-bold disabled:opacity-50"
               >
                 Continue with the Fediverse
               </button>

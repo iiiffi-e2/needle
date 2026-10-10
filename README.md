@@ -31,20 +31,19 @@ npm install
    - `005_friendships.sql`
    - `006_stress_test.sql` (stress harness)
    - `007_stress_bot_write_guard.sql` (stress harness)
-   - `008_fediverse_auth.sql` (Fediverse sign-in)
+   - `009_fediverse_auth.sql` (Fediverse sign-in)
 5. Enable Realtime for: `chat_messages`, `room_members`, `room_playback`, `track_votes`, `dj_slots`, `dj_waitlist`, `queue_items`, `relationships`, `room_invites`
 
 ### Sign-in providers
 
-Needle signs people in with Google, Apple, an email magic link, or a Fediverse handle. There is no password form.
+Needle signs people in with Google, an email magic link, or a Fediverse handle. There is no password form. Apple sign-in is implemented and hidden until an Apple Developer account is available.
 
 In the Supabase dashboard:
 
 1. Authentication → Sign In / Providers → Email stays enabled, and “Allow new users to sign up” stays on.
 2. Enable Google. In Google Cloud, the authorized redirect URI is `https://<project-ref>.supabase.co/auth/v1/callback`.
-3. Enable Apple (Services ID, Team ID, Key ID, private key, and Apple’s domain verification). Use the same Supabase callback URL.
-4. Authentication → URL Configuration: set the site URL to the app origin. Add `http://localhost:3000/auth/callback` and the production `/auth/callback` to the redirect allow list.
-5. Leave manual linking off. Supabase already links Google, Apple, and a magic link when they share a verified email.
+3. Authentication → URL Configuration: set the site URL to the app origin. Add `http://localhost:3000/auth/callback` and the production `/auth/callback` to the redirect allow list.
+4. Leave manual linking off. Supabase already links Google and a magic link when they share a verified email.
 
 `NEXT_PUBLIC_APP_URL` is the origin Needle registers with a Fediverse server. For local Fediverse login, that server must be able to reach this origin. A Fediverse handle signs in on its own account and is not attached to a Google, Apple, or email account.
 
@@ -96,7 +95,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `/profile/[id]` | User profile with stats and saved tracks |
 | `/friends` | Friends list, requests, and user search |
 | `/admin/stress` | Secret-gated listener stress harness (not linked in nav) |
-| `/auth/login` | Continue with Google, Apple, the Fediverse, or an email link |
+| `/auth/login` | Continue with Google, the Fediverse, or an email link |
 | `/auth/signup` | Same continue screen |
 
 ## Core Features

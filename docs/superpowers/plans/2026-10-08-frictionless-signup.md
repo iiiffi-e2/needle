@@ -39,7 +39,7 @@
 | `src/lib/auth/fediverse-session.ts` | `fediverseEmail`, `publicEmailForAuthUser`, `establishFediverseSession` |
 | `src/lib/auth/fediverse-callback.ts` | State parse and callback plan |
 | `src/lib/auth/app-origin.ts` | `resolveAppOrigin` |
-| `supabase/migrations/008_fediverse_auth.sql` | Column, app table, trigger |
+| `supabase/migrations/009_fediverse_auth.sql` | Column, app table, trigger |
 | `src/components/auth/ContinueForm.tsx` | Shared continue screen |
 | `src/app/auth/login/page.tsx` | Login heading |
 | `src/app/auth/signup/page.tsx` | Signup heading |
@@ -117,7 +117,7 @@
 ### Task 4: Schema
 
 **Files:**
-- Create: `supabase/migrations/008_fediverse_auth.sql`
+- Create: `supabase/migrations/009_fediverse_auth.sql`
 
 - [ ] Add nullable unique `users.fediverse_acct`.
 - [ ] Add `fediverse_oauth_apps` with RLS enabled and no policies.

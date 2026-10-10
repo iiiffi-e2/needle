@@ -70,7 +70,12 @@ export function FooterCta({ isLoggedIn = false }: FooterCtaProps) {
             About
           </Link>
           <span className="cursor-default opacity-60">Discord</span>
-          <span className="cursor-default opacity-60">Privacy</span>
+          <Link href="/privacy" className="hover:text-[var(--txt)] transition-colors">
+            Privacy
+          </Link>
+          <Link href="/terms" className="hover:text-[var(--txt)] transition-colors">
+            Terms
+          </Link>
         </div>
       </footer>
     </section>

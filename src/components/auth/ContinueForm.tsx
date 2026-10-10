@@ -219,6 +219,17 @@ export function ContinueForm({ heading, lede, alternate }: ContinueFormProps) {
             {alternate.label}
           </Link>
         </p>
+        <p className="text-xs text-muted text-center mt-4 leading-relaxed">
+          By continuing, you agree to the{" "}
+          <Link href="/terms" className="underline hover:text-foreground">
+            Terms
+          </Link>{" "}
+          and{" "}
+          <Link href="/privacy" className="underline hover:text-foreground">
+            Privacy Policy
+          </Link>
+          .
+        </p>
       </div>
     </div>
   );

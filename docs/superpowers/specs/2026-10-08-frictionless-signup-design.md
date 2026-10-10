@@ -48,9 +48,10 @@ Automatic linking of verified emails is Supabase’s built-in behavior. This ver
 From top to bottom:
 
 1. **Continue with Google**
-2. **Continue with Apple**
-3. **Continue with the Fediverse.** Opens a handle field on this screen. It does not navigate to a new page.
-4. **Email.** One address and the button “Email me a link”.
+2. **Continue with the Fediverse.** The button matches Google. Clicking it replaces that button with the handle field. It does not navigate to a new page.
+3. **Email.** One address and the button “Email me a link”.
+
+Continue with Apple is implemented and not shown. It returns when an Apple Developer account is available.
 
 There is no password input, no display-name input, and no link that mentions a password.
 
@@ -216,7 +217,7 @@ The profile insert fallback in `src/app/api/profile/route.ts` uses the same emai
 
 ## Data
 
-Migration `supabase/migrations/008_fediverse_auth.sql`:
+Migration `supabase/migrations/009_fediverse_auth.sql`:
 
 ```sql
 ALTER TABLE public.users

@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import LoginForm from "./LoginForm";
+import { ContinueForm } from "@/components/auth/ContinueForm";
 
 export default function LoginPage() {
   return (
@@ -10,7 +10,11 @@ export default function LoginPage() {
         </div>
       }
     >
-      <LoginForm />
+      <ContinueForm
+        heading="Welcome back"
+        lede="Sign in to join the listening party."
+        alternate={{ prompt: "No account?", href: "/auth/signup", label: "Join Needle" }}
+      />
     </Suspense>
   );
 }

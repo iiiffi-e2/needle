@@ -1,6 +1,10 @@
 import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
-import { resolveAppOrigin, fediverseRedirectUri } from "@/lib/auth/app-origin";
+import {
+  resolveAppOrigin,
+  fediverseRedirectUri,
+  fediverseAppStorageKey,
+} from "@/lib/auth/app-origin";
 import { authorizeUrl, fediverseFailure, fediverseRequest, fediverseValue, loadOrRegisterApp } from "@/lib/auth/fediverse-broker";
 import { parseFediverseHandle } from "@/lib/auth/fediverse-handle";
 import { assertPublicHost } from "@/lib/auth/fediverse-host";
@@ -32,26 +36,28 @@ export async function POST(request: Request) {
     process.env.NEXT_PUBLIC_APP_URL,
     new URL(request.url).origin
   );
+  const redirectUri = fediverseRedirectUri(origin);
+  const storageKey = fediverseAppStorageKey(parsed.host, redirectUri);
   const admin = createServiceClient();
   const registered = await loadOrRegisterApp({
     host: parsed.host,
     origin,
-    load: async (host) => {
+    load: async () => {
       const { data } = await admin
         .from("fediverse_oauth_apps")
         .select("client_id, client_secret")
-        .eq("host", host)
+        .eq("host", storageKey)
         .maybeSingle();
       if (!data?.client_id || !data.client_secret) return null;
       return {
-        host,
+        host: parsed.host,
         clientId: data.client_id,
         clientSecret: data.client_secret,
       };
     },
     save: async (app) => {
       const { error } = await admin.from("fediverse_oauth_apps").insert({
-        host: app.host,
+        host: storageKey,
         client_id: app.clientId,
         client_secret: app.clientSecret,
       });

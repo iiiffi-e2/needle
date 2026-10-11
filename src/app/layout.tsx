@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Hanken_Grotesk } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { AuthWatcher } from "@/components/shared/AuthWatcher";
+import { createClient } from "@/lib/supabase/server";
 import { FriendFloorToast } from "@/components/shared/FriendFloorToast";
 import { InviteToast } from "@/components/shared/InviteToast";
 import { InstallPromptGate } from "@/components/shared/InstallPromptGate";
@@ -46,13 +47,22 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   return (
-    <html lang="en" className={`${bricolage.variable} ${hanken.variable} h-full`}>
+    <html
+      lang="en"
+      data-session={user ? "1" : "0"}
+      className={`${bricolage.variable} ${hanken.variable} h-full`}
+    >
       <body className="min-h-full antialiased">
         {children}
         <InviteToast />

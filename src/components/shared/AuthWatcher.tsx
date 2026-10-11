@@ -1,31 +1,41 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { shouldRefreshServerSession } from "@/lib/auth/server-session-sync";
 import { createClient } from "@/lib/supabase/client";
 
 /**
- * Global listener that keeps the server-rendered view in sync with the
- * browser's auth state. Its main job is self-healing: when a stored session
- * becomes invalid (e.g. a stale/rotated refresh token left over after an Auth
- * outage), the Supabase client emits SIGNED_OUT and clears its cookies. We
- * react by re-running server components so protected pages redirect to login,
- * instead of leaving the UI stuck in a broken, half-authenticated loop.
+ * Keeps the server-rendered account menu in sync with the browser session.
+ * Sign-out still refreshes so a rejected refresh token cannot leave a
+ * half-authenticated page. Sign-in refreshes once when the browser already
+ * holds a session the server did not render, which is what happens on the
+ * first page after Google sends the browser back.
  */
 export function AuthWatcher() {
   const router = useRouter();
+  const synced = useRef(false);
 
   useEffect(() => {
     const supabase = createClient();
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-      // Only react to sign-out. This covers both explicit logout and, more
-      // importantly, the involuntary case where the stored refresh token is
-      // rejected. Re-running server components lets protected pages redirect
-      // to login cleanly. (Other events like INITIAL_SESSION / TOKEN_REFRESHED
-      // must be ignored to avoid needless refreshes on load and tab focus.)
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      const serverHasSession =
+        document.documentElement.dataset.session === "1";
       if (event === "SIGNED_OUT") {
+        router.refresh();
+        return;
+      }
+      if (synced.current) return;
+      if (
+        shouldRefreshServerSession({
+          event,
+          hasSession: Boolean(session),
+          serverHasSession,
+        })
+      ) {
+        synced.current = true;
         router.refresh();
       }
     });

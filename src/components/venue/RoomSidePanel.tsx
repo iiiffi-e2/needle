@@ -10,6 +10,7 @@ import type {
   SavedTrack,
   User,
 } from "@/lib/types";
+import { hydrateChatAuthor, mergeChatMessage } from "@/lib/chat-messages";
 import { resolveUserColor } from "@/lib/design-tokens";
 import { getQueuePlaybackOrder } from "@/lib/queue-order";
 import { timeAgo } from "@/lib/utils";
@@ -88,12 +89,14 @@ export function RoomSidePanel({
     }
   }, [messages, activeTab]);
 
-  const addMessage = useCallback((message: ChatMessage) => {
-    setMessages((prev) => {
-      if (prev.some((m) => m.id === message.id)) return prev;
-      return [...prev, message];
-    });
-  }, []);
+  const addMessage = useCallback(
+    (message: ChatMessage) => {
+      setMessages((prev) =>
+        mergeChatMessage(prev, hydrateChatAuthor(message, members))
+      );
+    },
+    [members]
+  );
 
   useEffect(() => {
     (window as unknown as { __needleAddChatMessage?: typeof addMessage }).__needleAddChatMessage =
@@ -103,6 +106,18 @@ export function RoomSidePanel({
         .__needleAddChatMessage;
     };
   }, [addMessage]);
+
+  useEffect(() => {
+    setMessages((prev) => {
+      let changed = false;
+      const next = prev.map((message) => {
+        const hydrated = hydrateChatAuthor(message, members);
+        if (hydrated !== message) changed = true;
+        return hydrated;
+      });
+      return changed ? next : prev;
+    });
+  }, [members]);
 
   const sendChat = async () => {
     const t = draft.trim();
@@ -117,7 +132,7 @@ export function RoomSidePanel({
       });
       if (res.ok) {
         const message = await res.json();
-        setMessages((prev) => [...prev, message]);
+        addMessage(message);
       }
     } finally {
       setLoading(false);

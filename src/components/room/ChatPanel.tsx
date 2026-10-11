@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { SystemMessage } from "@/components/shared/SystemMessage";
 import { NeedlebotMessage } from "@/components/shared/NeedlebotMessage";
+import { mergeChatMessage } from "@/lib/chat-messages";
 import type { ChatMessage } from "@/lib/types";
 import { timeAgo } from "@/lib/utils";
 
@@ -46,6 +47,10 @@ export function ChatPanel({
     return () => container.removeEventListener("scroll", handleScroll);
   }, []);
 
+  const addMessage = useCallback((message: ChatMessage) => {
+    setMessages((prev) => mergeChatMessage(prev, message));
+  }, []);
+
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || !currentUserId || loading) return;
@@ -63,19 +68,12 @@ export function ChatPanel({
 
       if (res.ok) {
         const message = await res.json();
-        setMessages((prev) => [...prev, message]);
+        addMessage(message);
       }
     } finally {
       setLoading(false);
     }
   };
-
-  const addMessage = useCallback((message: ChatMessage) => {
-    setMessages((prev) => {
-      if (prev.some((m) => m.id === message.id)) return prev;
-      return [...prev, message];
-    });
-  }, []);
 
   useEffect(() => {
     (window as unknown as { __needleAddChatMessage?: typeof addMessage }).__needleAddChatMessage = addMessage;

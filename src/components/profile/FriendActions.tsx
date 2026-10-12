@@ -8,12 +8,14 @@ interface FriendActionsProps {
   profileUserId: string;
   currentUserId: string;
   initialRelationship: Relationship | null;
+  layout?: "card" | "plain";
 }
 
 export function FriendActions({
   profileUserId,
   currentUserId,
   initialRelationship,
+  layout = "card",
 }: FriendActionsProps) {
   const [relationship, setRelationship] = useState<Relationship | null>(
     initialRelationship
@@ -125,12 +127,8 @@ export function FriendActions({
   const isBusy = (action: string) => loadingAction === action;
   const disableAll = loadingAction !== null;
 
-  return (
-    <div className="glass-card rounded-2xl p-5 mb-6">
-      <h2 className="text-sm font-semibold uppercase tracking-wider text-muted mb-4">
-        Friend Actions
-      </h2>
-
+  const actions = (
+    <>
       <div className="flex flex-wrap items-center gap-2">
         {relationshipHint === "none" && (
           <button
@@ -208,19 +206,33 @@ export function FriendActions({
           </span>
         )}
 
-        {relationshipHint !== "blocked" && relationshipHint !== "blocked_by_them" && (
-          <button
-            type="button"
-            onClick={blockUser}
-            disabled={disableAll}
-            className="btn-secondary px-4 py-2 rounded-full text-sm font-medium disabled:opacity-50"
-          >
-            {isBusy("block") ? "Blocking..." : "Block"}
-          </button>
-        )}
+        {relationshipHint !== "blocked" &&
+          relationshipHint !== "blocked_by_them" && (
+            <button
+              type="button"
+              onClick={blockUser}
+              disabled={disableAll}
+              className="btn-secondary px-4 py-2 rounded-full text-sm font-medium disabled:opacity-50"
+            >
+              {isBusy("block") ? "Blocking..." : "Block"}
+            </button>
+          )}
       </div>
 
       {error && <p className="text-sm text-danger mt-3">{error}</p>}
+    </>
+  );
+
+  if (layout === "plain") {
+    return actions;
+  }
+
+  return (
+    <div className="glass-card rounded-2xl p-5 mb-6">
+      <h2 className="text-sm font-semibold uppercase tracking-wider text-muted mb-4">
+        Friend Actions
+      </h2>
+      {actions}
     </div>
   );
 }

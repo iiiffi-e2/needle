@@ -96,6 +96,7 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
   const [dropSheetOpen, setDropSheetOpen] = useState(false);
   const [stepOffOpen, setStepOffOpen] = useState(false);
   const [openPerson, setOpenPerson] = useState<RoomPerson | null>(null);
+  const closePerson = useCallback(() => setOpenPerson(null), []);
   const [deckLoading, setDeckLoading] = useState(false);
   const [crateRefreshKey, setCrateRefreshKey] = useState(0);
   const advancingQueueItemRef = useRef<string | null>(null);
@@ -649,7 +650,7 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
           key={openPerson.userId}
           person={openPerson}
           currentUserId={currentUserId}
-          onClose={() => setOpenPerson(null)}
+          onClose={closePerson}
         />
       )}
 

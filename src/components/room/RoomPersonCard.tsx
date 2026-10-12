@@ -35,6 +35,16 @@ export function RoomPersonCard({
   const openUserIdRef = useRef(person.userId);
   openUserIdRef.current = person.userId;
 
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const previouslyFocused = document.activeElement;
+    closeButtonRef.current?.focus();
+    return () => {
+      if (previouslyFocused instanceof HTMLElement) previouslyFocused.focus();
+    };
+  }, []);
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
@@ -99,6 +109,7 @@ export function RoomPersonCard({
         >
           <div className="flex justify-end">
             <button
+              ref={closeButtonRef}
               type="button"
               onClick={onClose}
               className="text-[12px] font-bold cursor-pointer bg-transparent border-none"

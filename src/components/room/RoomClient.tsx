@@ -17,6 +17,8 @@ import { DropSheet } from "@/components/venue/DropSheet";
 import { StepOffConfirmSheet } from "@/components/venue/StepOffConfirmSheet";
 import { RoomSidePanel, type TabId } from "@/components/venue/RoomSidePanel";
 import { YouTubeStage } from "@/components/venue/YouTubeStage";
+import { RoomPersonCard } from "@/components/room/RoomPersonCard";
+import type { RoomPerson } from "@/lib/room-person";
 import { useRoomRealtime } from "@/hooks/useRoomRealtime";
 import { useStageViewMode } from "@/hooks/useStageViewMode";
 import { getEffectiveEnergy } from "@/lib/room-energy";
@@ -93,6 +95,7 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
   const [mobileDrawer, setMobileDrawer] = useState<TabId | null>(null);
   const [dropSheetOpen, setDropSheetOpen] = useState(false);
   const [stepOffOpen, setStepOffOpen] = useState(false);
+  const [openPerson, setOpenPerson] = useState<RoomPerson | null>(null);
   const [deckLoading, setDeckLoading] = useState(false);
   const [crateRefreshKey, setCrateRefreshKey] = useState(0);
   const advancingQueueItemRef = useRef<string | null>(null);
@@ -537,6 +540,7 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
                 waitlistPosition={waitlistPosition}
                 deckJoinMode={deckJoinMode}
                 onLeaveWaitlist={handleLeaveWaitlist}
+                onPickPerson={setOpenPerson}
               />
               <ReactionBursts bursts={bursts} />
               <QuickReacts roomSlug={room.slug} onReact={handleQuickReact} />
@@ -589,6 +593,7 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
           hideTabBar={isMobile}
           mobileDrawerOpen={isMobile && mobileDrawer !== null}
           onCloseDrawer={closeMobileDrawer}
+          onPickPerson={setOpenPerson}
         />
       </div>
 
@@ -638,6 +643,15 @@ export function RoomClient({ room, initialData }: RoomClientProps) {
         }}
         onCancel={() => setStepOffOpen(false)}
       />
+
+      {openPerson && (
+        <RoomPersonCard
+          key={openPerson.userId}
+          person={openPerson}
+          currentUserId={currentUserId}
+          onClose={() => setOpenPerson(null)}
+        />
+      )}
 
       {toast && (
         <div

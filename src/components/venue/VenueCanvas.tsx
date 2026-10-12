@@ -1,7 +1,6 @@
 "use client";
 
 import { memo, useMemo, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
 import type { DjSlot, RoomMember, User } from "@/lib/types";
 import { VinylBlob } from "@/components/avatars/VinylBlob";
 import {
@@ -13,6 +12,7 @@ import type { CrowdHeadReaction } from "@/lib/crowd-reactions";
 import { useLocalCrowdPosition } from "@/hooks/useLocalCrowdPosition";
 import { getInitials, truncateDisplayName } from "@/lib/utils";
 import { ProfileLink } from "@/components/shared/ProfileLink";
+import { toRoomPerson, type RoomPerson } from "@/lib/room-person";
 
 const CrowdMemberBlob = memo(function CrowdMemberBlob({
   color,
@@ -108,6 +108,7 @@ interface DeckSlotProps {
   loading: boolean;
   canJoin: boolean;
   joinLabel?: string;
+  onPickPerson: (person: RoomPerson) => void;
 }
 
 function OwnDeckBlobTap({
@@ -144,6 +145,7 @@ function DeckSlot({
   loading,
   canJoin,
   joinLabel = "JOIN DECK",
+  onPickPerson,
 }: DeckSlotProps) {
   const isLeft = side === "left";
   const accentRgb = isLeft ? "255, 157, 60" : "123, 92, 255";
@@ -179,6 +181,10 @@ function DeckSlot({
           ) : (
             <ProfileLink
               userId={occupant.user_id}
+              displayName={occupant.user.display_name}
+              avatarUrl={occupant.user.avatar_url}
+              avatarColor={occupant.user.avatar_color}
+              onPick={onPickPerson}
               title={`${occupant.user.display_name || "DJ"} — view profile`}
               className="block cursor-pointer hover:opacity-90 transition-opacity"
             >
@@ -279,6 +285,7 @@ export interface VenueCanvasProps {
   waitlistPosition: number | null;
   deckJoinMode: "deck" | "waitlist";
   onLeaveWaitlist: () => void;
+  onPickPerson: (person: RoomPerson) => void;
 }
 
 export function VenueCanvas({
@@ -302,8 +309,8 @@ export function VenueCanvas({
   waitlistPosition,
   deckJoinMode,
   onLeaveWaitlist,
+  onPickPerson,
 }: VenueCanvasProps) {
-  const router = useRouter();
   const [focusedCrowdUserId, setFocusedCrowdUserId] = useState<string | null>(
     null
   );
@@ -569,6 +576,7 @@ export function VenueCanvas({
           loading={deckLoading}
           canJoin={canJoinOpenSlot}
           joinLabel={joinLabel}
+          onPickPerson={onPickPerson}
         />
       </div>
 
@@ -681,6 +689,10 @@ export function VenueCanvas({
               ) : (
                 <ProfileLink
                   userId={currentDj.id}
+                  displayName={currentDj.display_name}
+                  avatarUrl={currentDj.avatar_url}
+                  avatarColor={currentDj.avatar_color}
+                  onPick={onPickPerson}
                   title={`${currentDj.display_name || "DJ"} — view profile`}
                   className="block cursor-pointer hover:opacity-90 transition-opacity"
                 >
@@ -776,6 +788,7 @@ export function VenueCanvas({
           loading={deckLoading}
           canJoin={canJoinOpenSlot}
           joinLabel={joinLabel}
+          onPickPerson={onPickPerson}
         />
       </div>
 
@@ -909,12 +922,12 @@ export function VenueCanvas({
               onDoubleClick={
                 isSelf
                   ? undefined
-                  : () => router.push(`/profile/${member.user_id}`)
+                  : () => onPickPerson(toRoomPerson(member.user_id, member.user))
               }
               title={
                 isSelf
                   ? undefined
-                  : `${displayName} — click to bring forward, double-click for profile`
+                  : `${displayName} — click to bring forward, double-click to view`
               }
               style={{
                 left: `${leftPct}%`,

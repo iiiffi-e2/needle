@@ -19,6 +19,7 @@ import { SystemMessage } from "@/components/shared/SystemMessage";
 import { NeedlebotMessage } from "@/components/shared/NeedlebotMessage";
 import { TrackSearchInput } from "@/components/shared/TrackSearchInput";
 import { ProfileLink } from "@/components/shared/ProfileLink";
+import { type RoomPerson } from "@/lib/room-person";
 
 type TabId = "chat" | "queue" | "info" | "crate";
 
@@ -43,6 +44,7 @@ interface RoomSidePanelProps {
   hideTabBar?: boolean;
   mobileDrawerOpen?: boolean;
   onCloseDrawer?: () => void;
+  onPickPerson: (person: RoomPerson) => void;
 }
 
 export function RoomSidePanel({
@@ -66,6 +68,7 @@ export function RoomSidePanel({
   hideTabBar = false,
   mobileDrawerOpen = false,
   onCloseDrawer,
+  onPickPerson,
 }: RoomSidePanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [draft, setDraft] = useState("");
@@ -336,7 +339,13 @@ export function RoomSidePanel({
                 : "#a98bff";
               return (
                 <div key={m.id} className="flex gap-2">
-                  <ProfileLink userId={m.user_id}>
+                  <ProfileLink
+                    userId={m.user_id}
+                    displayName={m.user?.display_name}
+                    avatarUrl={m.user?.avatar_url}
+                    avatarColor={m.user?.avatar_color}
+                    onPick={onPickPerson}
+                  >
                     <span
                       className="w-[26px] h-[26px] shrink-0 rounded-full shadow-[0_0_0_2px_var(--ndl-bg1)] cursor-pointer hover:ring-2 hover:ring-glow/40 transition-shadow"
                       style={{ background: color }}
@@ -346,6 +355,10 @@ export function RoomSidePanel({
                     <div className="text-[11px] mb-0.5">
                       <ProfileLink
                         userId={m.user_id}
+                        displayName={m.user?.display_name}
+                        avatarUrl={m.user?.avatar_url}
+                        avatarColor={m.user?.avatar_color}
+                        onPick={onPickPerson}
                         className="cursor-pointer hover:text-glow-soft transition-colors"
                       >
                         <b className="font-bold" style={{ color: "var(--txt)" }}>
@@ -658,6 +671,10 @@ export function RoomSidePanel({
                       {index + 1}.{" "}
                       <ProfileLink
                         userId={entry.user_id}
+                        displayName={entry.user?.display_name}
+                        avatarUrl={entry.user?.avatar_url}
+                        avatarColor={entry.user?.avatar_color}
+                        onPick={onPickPerson}
                         className="hover:text-glow-soft transition-colors"
                       >
                         {entry.user?.display_name || "Anonymous"}
@@ -676,6 +693,10 @@ export function RoomSidePanel({
                 <ProfileLink
                   key={m.id}
                   userId={m.user_id}
+                  displayName={m.user?.display_name}
+                  avatarUrl={m.user?.avatar_url}
+                  avatarColor={m.user?.avatar_color}
+                  onPick={onPickPerson}
                   title={m.user?.display_name || "View profile"}
                   className="w-[30px] h-[30px] rounded-full shadow-[0_0_0_2px_var(--ndl-bg1)] cursor-pointer hover:ring-2 hover:ring-glow/40 transition-shadow block"
                   style={{
